@@ -1,0 +1,171 @@
+import os
+from os.path import join
+import sys
+
+sys.path.append("..")
+from pkg.io import files_match_pattern, decode_files
+
+
+"""
+This workflow compares the molecular expression of MSI data (provided as imzML files)
+in specified regions of 2 groups (e.g. control and infected) (provided as binary images)
+
+input:
+    data folder must contain the following directories:
+    - "msi": directory with imzML files named group_sample.imzML
+    - "bin_imgs": directory with binary regions named class_group_sampleno.tif
+
+output:
+    - "<class>": directory with imzML files containing pixels of class from binary image
+    - "<class>/summarized/FC<FC_thr>": volcano plot, heatmap of regulated m/z, 
+    pie chart of regulated lipids (if annotated), csv files with regulated m/z
+    - "combined_FC<FC_thr>_<down/up>regulated": venn diagram with intersecting regulation 
+    between regions (if 2-3 regions provided) and csv files with intersecting and unique regulated m/z for every class
+"""
+
+
+def get_input_all(root_dir, classes, file_names, annot, input_list=[]):
+    #input_list.append(expand(ROOT_DIR + '/{cl}/{fl}.imzML', cl=CLASSES, fl=FILE_NAMES))
+    #input_list.append(expand(ROOT_DIR + '/{cl}/summarized.csv', cl=CLASSES))
+    input_list.append(expand(root_dir + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot
+                             + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+                             + '_regulated_heatmap.svg', cl=classes))
+    input_list.append(expand(root_dir + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot + 'volcano_plot.svg', cl=classes))
+    if annot == 'annot_':
+        input_list.append(expand(root_dir+ '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot
+        + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+        + '_regulated_piechart.svg', cl=classes))
+    if config['statistical_analysis']['save_ion_imgs'] == 1:
+        input_list.append(expand(root_dir + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot + 'regulated_ion_imgs/{fl}', cl=classes, fl=file_names))
+    if len(classes) > 1 and len(classes) < 4:
+        input_list.append(expand(root_dir + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_downregulation/{cl}_specific_molecules.csv', cl=classes))
+        input_list.append(expand(root_dir+ '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_upregulation/{cl}_specific_molecules.csv', cl=classes))
+    return input_list
+
+
+configfile: 'data/config.yaml'
+
+
+imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.imzML
+bin_img_pattern = r"[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_condition_sampleno.tif
+
+SCRIPT_PATH = 'scripts'
+VIS_SCRIPT_PATH = '../data_visualization'
+DATA_PATH = config['data']
+
+IMZML_DIR = join(DATA_PATH, 'msi')
+ROOT_DIR = os.path.dirname(IMZML_DIR)
+BIN_IMG_DIR = join(DATA_PATH, 'bin_imgs')
+IMZML_FILES = files_match_pattern(IMZML_DIR, imzML_pattern)
+BIN_IMG_FILES = files_match_pattern(BIN_IMG_DIR, bin_img_pattern)
+FILE_NAMES = [f.split('.')[0] for f in IMZML_FILES]
+CLASSES, GROUPS, SAMPLES = decode_files(BIN_IMG_FILES)
+
+if config['annotate']:
+    ANNOT_FL = join(DATA_PATH, 'annotation.tsv')
+    ANNOT = 'annot_'
+else:
+    ANNOT_FL = ''
+    ANNOT = 'non_annot_'
+
+
+rule all:
+    input: get_input_all(ROOT_DIR, CLASSES, FILE_NAMES, ANNOT)
+
+rule create_class_dir:
+    input: BIN_IMG_DIR + '/{cl}_{fl}.tif'
+    output: ROOT_DIR + '/{cl}/{fl}.tif'
+    shell: "cp {input:q} {output:q}"
+
+rule create_imzML_for_class_region:
+    input: imzML_file=IMZML_DIR + '/{fl}.imzML', bin_img=ROOT_DIR + '/{cl}/{fl}.tif'
+    output: ROOT_DIR + '/{cl}/{fl}.imzML'
+    shell: 'python ' + SCRIPT_PATH + '/get_region_imzML_from_mask.py {input.imzML_file:q} {input.bin_img:q} '
+            '-result_dir \'' + ROOT_DIR + '/{wildcards.cl}\''
+
+rule summarize_spectra:
+    input: expand(ROOT_DIR + '/{cl}/{fl}.imzML', cl=CLASSES, fl=FILE_NAMES)
+    output: ROOT_DIR + '/{cl}/summarized/summarized.csv'
+    shell: 'python ' + SCRIPT_PATH + '/get_summarized_spectra.py ' + ROOT_DIR + '/{wildcards.cl}/ '
+            '-method {config[summarize_spectra][method]} -result_dir \'' + ROOT_DIR + '/{wildcards.cl}/summarized\''
+
+rule annotate:
+    input: sum_file=ROOT_DIR + '/{cl}/summarized/summarized.csv', annot_file=ANNOT_FL
+    output: ROOT_DIR + '/{cl}/summarized/' + ANNOT + 'summarized.csv'
+    run:
+        if ANNOT_FL != '':
+            shell('python ' + SCRIPT_PATH + '/annotate_lipidmaps.py {input.sum_file:q} {input.annot_file:q} {output:q}')
+        else:
+            shell('cp {input:q} {output:q}')
+
+rule stat_analysis:
+    input: ROOT_DIR + '/{cl}/summarized/' + ANNOT + 'summarized.csv'
+    output: regulated=ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_regulated.csv',
+            downregulated=ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv',
+            upregulated=ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv',
+            volcano=ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + 'volcano_plot.svg'
+    run:
+        if ANNOT_FL == '':
+            shell('python ' + SCRIPT_PATH + '/volcano.py {input:q} {config[statistical_analysis][infected_grp]} '
+            '{config[statistical_analysis][control_grp]} -fc_thr {config[statistical_analysis][fold_change_thr]}')
+        else:
+            shell('python ' + SCRIPT_PATH + '/volcano.py {input:q} {config[statistical_analysis][infected_grp]} '
+            '{config[statistical_analysis][control_grp]} -fc_thr {config[statistical_analysis][fold_change_thr]} '
+            '-color_col \'Lipid class no.\' -categorical True')
+
+rule heatmap:
+    input: ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT
+            + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+            + '_regulated.csv'
+    output: ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT
+            + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+            + '_regulated_heatmap.svg'
+    shell: 'python ' + SCRIPT_PATH + '/heatmap.py {input:q} {output:q} -row_norm {config[heatmap][row_norm]}'
+
+rule piechart:
+    input: ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT
+            + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+            + '_regulated.csv'
+    output: ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT
+            + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+            + '_regulated_piechart.svg'
+    shell: 'python ' + SCRIPT_PATH + '/pie_chart.py {input:q} {output:q}'
+
+rule save_regulated_ion_imgs:
+    input: regulated=ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT
+            + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
+            + '_regulated.csv', imzML_file=IMZML_DIR + '/{fl}.imzML'
+    output: ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + 'regulated_ion_imgs/{fl}'
+    shell: 'python ' + VIS_SCRIPT_PATH + '/save_ion_imgs.py {input.imzML_file:q} '
+            + ROOT_DIR + '/{wildcards.cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr'])
+            + '/' + ANNOT + 'regulated_ion_imgs -mz_file {input.regulated:q} -format \'tif\''
+
+rule combine_downregulated:
+    input: expand(ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv', cl=CLASSES)
+    output: expand(ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_downregulation/{cl}_specific_molecules.csv', cl=CLASSES)
+    run:
+        if len(CLASSES) == 2:
+            shell('python ' + SCRIPT_PATH + '/venn_diagram.py ' + ROOT_DIR + '/' + CLASSES[0] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv '
+                    + ROOT_DIR + '/' + CLASSES[1] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv '
+                    + CLASSES[0] + ' ' + CLASSES[1] + ' ' + ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_downregulation/')
+        elif len(CLASSES) == 3:
+            shell('python ' + SCRIPT_PATH + '/venn_diagram.py '
+                    + ROOT_DIR + '/' + CLASSES[0] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv '
+                    + ROOT_DIR + '/'+ CLASSES[1] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv '
+                    + CLASSES[0] + ' ' + CLASSES[1] + ' ' + ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_downregulation/ -label3 ' + CLASSES[2] + ' -file3 ' + ROOT_DIR + '/' + CLASSES[2] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr'])
+                    + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_downregulated.csv')
+
+rule combine_upregulated:
+    input: expand(ROOT_DIR + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv', cl=CLASSES)
+    output: expand(ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_upregulation/{cl}_specific_molecules.csv', cl=CLASSES)
+    run:
+        if len(CLASSES) == 2:
+            shell('python ' + SCRIPT_PATH + '/venn_diagram.py ' + ROOT_DIR + '/' + CLASSES[0] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv '
+                    + ROOT_DIR + '/' + CLASSES[1] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv '
+                    + CLASSES[0] + ' ' + CLASSES[1] + ' ' + ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_upregulation/')
+        elif len(CLASSES) == 3:
+            shell('python ' + SCRIPT_PATH + '/venn_diagram.py '
+                    + ROOT_DIR + '/' + CLASSES[0] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv '
+                    + ROOT_DIR + '/'+ CLASSES[1] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv '
+                    + CLASSES[0] + ' ' + CLASSES[1] + ' ' + ROOT_DIR + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_upregulation/ -label3 '
+                    + CLASSES[2] + ' -file3 ' + ROOT_DIR + '/' + CLASSES[2] + '/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + ANNOT + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp'] + '_upregulated.csv')

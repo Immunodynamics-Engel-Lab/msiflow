@@ -1,0 +1,32 @@
+import os
+
+
+"""
+This workflow performs segmentation on microscopy data (provided as TIF images / image stacks)
+
+input:
+    "data": directory containing TIF image (stack) files
+
+output:
+    "data/segmented": segmented TIF image (stack) files
+"""
+
+
+configfile: 'data/config.yaml'
+
+
+IF_SEG_SCRIPT_PATH = 'scripts'
+IMG_DIR = config['data']
+FILES = [os.path.splitext(f)[0] for f in os.listdir(IMG_DIR) if
+         os.path.isfile(os.path.join(IMG_DIR,f)) and f.endswith('.tif')]
+
+rule all:
+    input: expand(IMG_DIR + '/segmented/{fl}.tif', fl=FILES)
+
+rule segment:
+    input: IMG_DIR + '/{fl}.tif'
+    output: IMG_DIR + '/segmented/{fl}.tif'
+    shell: 'python ' + IF_SEG_SCRIPT_PATH + '/segment.py {input:q} -output {output:q} '
+            '-sigma {config[if_segmentation][gauss_sigma]} '
+            '-thr_method {config[if_segmentation][threshold_algorithm]} -min_size {config[if_segmentation][min_size]} '
+            '-chan_to_seg_list {config[if_segmentation][img_channels_to_segment]}'

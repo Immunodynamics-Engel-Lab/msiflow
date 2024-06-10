@@ -1,0 +1,81 @@
+import os
+from os.path import join
+
+
+"""
+This workflow performs image co-registration between microscopy (provided as TIF images) 
+and MSI (provided as imzML) data and includes microscopy image pre-processing.
+UMAP image is generated from MSI and used as fixed image. 
+The autofluorescence image channel (must be specified in the config) from microscopy is used as moving image.
+
+input:
+    data folder must contain the following directories:
+    - "fixed": directory with MSI data (imzML files)
+    - "moving": directory with microscopy data (directory for each sample containing TIF images)
+    - "fixed/mask": optional masks from MSI (directory with binary images)
+    to validate registration result 
+    (in that case microscopy must also contain a binary image channel defined in the config)
+
+output:
+    - "fixed/umap": UMAP images from MSI
+    - "moving/preprocessed": preprocessed microscopy image stacks 
+    - "registered": registered microscopy images and overlay of masks if provided
+"""
+
+
+def get_input(mov_dir, fix_mask_dir, files, input_list=[]):
+    input_list.append(expand(os.path.dirname(mov_dir)+ '/registered/{fl}.tif', fl=files))
+    if fix_mask_dir != '':
+        input_list.append(expand(os.path.dirname(mov_dir) + '/registered/mask_overlay_{fl}.svg', fl=files))
+    return input_list
+
+
+configfile: 'data/config.yaml'
+
+
+MSI_IF_REG_SCRIPT_PATH = 'scripts'
+MSI_SEG_SCRIPT_PATH = '../msi_segmentation_flow/scripts'
+DATA_PATH = config['data']
+
+MOV_DIR = join(DATA_PATH, 'moving')
+FIX_DIR = join(DATA_PATH, 'fixed')
+FIX_MASK_DIR = join(DATA_PATH, 'fixed/mask')
+
+FILES = [f for f in os.listdir(MOV_DIR) if os.path.isdir(join(MOV_DIR, f)) and 'preprocessed' not in f]
+
+
+rule all:
+    input: get_input(MOV_DIR, FIX_MASK_DIR, FILES)
+
+rule umap:
+    input: FIX_DIR + '/{fl}.imzML'
+    output: FIX_DIR + '/umap/umap_grayscale_{fl}.tif'
+    shell: 'python ' + MSI_SEG_SCRIPT_PATH + '/single_sample_segmentation.py {input} -result_dir ' + FIX_DIR
+            + '/umap -n_components 1 -cluster \'\''
+
+rule create_img_stacks:
+    input: MOV_DIR + '/{fl}'
+    output: MOV_DIR + '/{fl}.tif'
+    shell: 'python ' + MSI_IF_REG_SCRIPT_PATH + '/create_image_stack.py {input} {output}'
+
+rule preprocess:
+    input: moving_img=MOV_DIR + '/{fl}.tif',
+            ref_img=FIX_DIR + '/umap/umap_grayscale_{fl}.tif'
+    output: MOV_DIR + '/preprocessed/{fl}.tif'
+    shell: 'python ' + MSI_IF_REG_SCRIPT_PATH+ '/preprocess.py {input.moving_img} {output} -radius {config[if_preprocessing][radius]} '
+            '-sigma {config[if_preprocessing][sigma]} -lower {config[if_preprocessing][lower_perc]} '
+            '-upper {config[if_preprocessing][upper_perc]} -scale_ref_img {input.ref_img}'
+
+rule registration:
+    input: fixed=FIX_DIR + '/umap/umap_grayscale_{fl}.tif',
+            moving=MOV_DIR + '/preprocessed/{fl}.tif'
+    output: os.path.dirname(MOV_DIR) + '/registered/{fl}.tif'
+    shell: 'python ' + MSI_IF_REG_SCRIPT_PATH + '/antspy_registration.py {input.fixed} {input.moving} '
+            '-af_chan {config[registration][af_chan]} -out_file {output}'
+
+rule validation:
+    input: reg=os.path.dirname(MOV_DIR) + '/registered/{fl}.tif',
+            gt=FIX_MASK_DIR + '/{fl}.tif'
+    output: os.path.dirname(MOV_DIR) + '/registered/mask_overlay_{fl}.svg'
+    shell: 'python ' + MSI_IF_REG_SCRIPT_PATH + '/binary_mask_comparison.py {input.gt} {input.reg} {output} '
+            '-mask_chan {config[registration][mask_val_chan]}'

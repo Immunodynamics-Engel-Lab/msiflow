@@ -1,0 +1,222 @@
+from os.path import join
+import sys
+
+sys.path.append("..")
+from pkg.io import files_match_pattern, decode_files
+
+
+"""
+This workflow extracts molecular signatures from MSI data (provided as imzML files) 
+for defined regions (provided as binary tif images/ image stacks)
+by combining ML-based classification, SHAP values and similarity measures (Pearson and cosine)
+
+input:
+    data folder must contain the following directories:
+    - "bin_imgs": directory with binary images named "class_group_sampleno.tif"
+    or directory with image stacks named "group_sampleno.tif" 
+    in the case of image stacks, image channels containing binary images need to be specified in the config.yaml
+    - "msi": directory with imzML files named "group_sample.imzML"
+    - "annotation.tsv": optional LipidMaps file containing potential lipid matches to measured m/z
+    - "umap_data.csv": optional file with umap embedding (generated with msi_segmentation_flow or 
+    molecular_heterogeneity_flow workflows) to save umaps with intensity distribution top m/z
+    
+output:
+    - "msi/meas_pixels": binary TIF images of measured MSI pixels
+    - "bin_imgs/reduced_to_meas_pixels": binary images reduced to measured MSI pixels
+    - "bin_imgs/reduced_to_meas_pixels/<class>": binary TIF images with positive and negative pixels for class
+    - "bin_imgs/reduced_to_meas_pixels/<class>/spatial_similarity": contains m/z ranking based on 
+    cosine and Pearson's correlation for each sample and the overall (mean)
+    - "bin_imgs/reduced_to_meas_pixels/<class>/<ML-model_balancing_method>": 
+    contains feature importance ranking of m/z values and SHAP summary
+    - "bin_imgs/reduced_to_meas_pixels/<class>/combined_rankings": 
+    - contains the top features as csv and feature importance ranking 
+    colour-coded according to the Pearson's correlation
+"""
+
+
+def get_input_all(classes, bin_img_dir, files, save_imgs, save_umaps, n_folds, multiclass, input_list=[]):
+    input_list.append(expand(bin_img_dir + '/reduced_to_meas_pixels/{cl}/'
+                             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+                             + '/' + config['classification']['model'] + '_feature_importance.csv',cl=classes))
+    if multiclass:
+        input_list.append(bin_img_dir + '/reduced_to_meas_pixels/'
+                          + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+                          + '/' + config['classification']['model'] + '_feature_importance.csv')
+    if save_imgs:
+        input_list.append(expand(bin_img_dir + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' +
+                  config['classification']['class_balancing_method'] + '/ion_imgs/{fl}', cl=classes, fl=files))
+
+    if save_umaps:
+        input_list.append(expand(bin_img_dir + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' +
+                                 config['classification']['class_balancing_method'] + '/ion_umaps', cl=classes))
+    if n_folds != 0:
+        input_list.append(expand(bin_img_dir + '/reduced_to_meas_pixels/{cl}/'
+                                 + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+                                 + '/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+                                 + '_ROC_curve.svg',cl=classes))
+    input_list.append(expand(bin_img_dir + '/reduced_to_meas_pixels/{cl}/combined_rankings/top_features.svg', cl=classes))
+
+    return input_list
+
+
+configfile: 'data/config.yaml'
+
+
+MOL_SIG_SCRIPT_PATH = 'scripts'
+VIS_SCRIPT_PATH = '../data_visualization'
+DATA_PATH = config['data']
+
+imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
+bin_img_pattern = r"[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_group_sampleno.tif
+img_stack_pattern = r"[a-zA-z0-9]+_[0-9]+\.tif$"  # image stack files must be named: group_sampleno.tif
+
+SAVE = config['classification']['save_ion_imgs']
+SAVE_UMAP = config['classification']['save_umap_imgs']
+N_FOLDS = config['classification']['n_folds']
+MULTI_CLASS = config['classification']['multiclass']
+
+ANNOT_FL = ""
+if config['classification']['annotate']:
+    ANNOT_FL = join(DATA_PATH, 'annotation.tsv')
+IMZML_DIR = join(DATA_PATH, 'msi')
+BIN_IMG_DIR = join(DATA_PATH, 'bin_imgs')
+
+UMAP_FL = ""
+if SAVE_UMAP:
+    UMAP_FL = join(DATA_PATH, 'umap_data.csv')
+
+IMZML_FILES = files_match_pattern(IMZML_DIR, imzML_pattern)
+FILES = [f.split('.')[0] for f in IMZML_FILES]
+# check if binary images are provides as class_group_sampleno.tif
+BIN_IMG_FILES = files_match_pattern(BIN_IMG_DIR, bin_img_pattern)
+if BIN_IMG_FILES:
+    # BIN_IMG_FILES = [f for f in BIN_IMG_FILES if f.split('_')[0] != '-1']
+    CLASSES, _, _ = decode_files(BIN_IMG_FILES)
+else:
+    IMG_STACK_FILES = files_match_pattern(BIN_IMG_DIR, img_stack_pattern)
+    CLASSES = [str(i) for i in config['classification']['img_channels'].split(',')]
+
+
+rule all:
+    input: get_input_all(CLASSES, BIN_IMG_DIR, FILES, SAVE, SAVE_UMAP, N_FOLDS, MULTI_CLASS)
+
+rule get_meas_pixels_img:
+    input: IMZML_DIR + '/{fl}.imzML'
+    output: IMZML_DIR + '/meas_pixels/{fl}.tif'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/get_meas_region_bin_img.py {input} -out_dir ' + IMZML_DIR + '/meas_pixels'
+
+rule stack_to_images:
+    input: BIN_IMG_DIR + '/{FILES}.tif'
+    output: expand(BIN_IMG_DIR + '/{cl}_{{FILES}}.tif', cl=CLASSES)
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/stack_to_images.py {input} -out_dir ' + BIN_IMG_DIR +
+            ' -channels {config[classification][img_channels]}'
+
+rule reduce_img_to_meas_region:
+    input: roi=BIN_IMG_DIR + '/{cl}_{fl}.tif', meas_region=IMZML_DIR + '/meas_pixels/{fl}.tif'
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}_{fl}.tif'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/combine_binary_imgs.py {input.roi:q} {input.meas_region:q} {output:q}'
+            ' -logical_operator \'and\''
+
+rule multi_classification:
+    input: expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}_{fl}.tif', cl=CLASSES, fl=FILES)
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/' + config['classification']['model'] + '_feature_importance.csv'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels ' + IMZML_DIR
+            + ' -result_dir ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{config[classification][model]}_{config[classification][class_balancing_method]} '
+            '-model {config[classification][model]} -balancing_method {config[classification][class_balancing_method]} '
+            '-num {config[classification][num_top_feat]} -n_folds 0'
+
+rule create_pos_class_img:
+    input: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}_{fl}.tif'
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/pos_{fl}.tif'
+    shell: 'mkdir -p ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}' + '&& cp {input} {output}'
+
+rule create_neg_class_img:
+    input: pos_cl_bin_img=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/pos_{fl}.tif', meas_pixels_img=IMZML_DIR + '/meas_pixels/{fl}.tif'
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/neg_{fl}.tif'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/combine_binary_imgs.py {input.meas_pixels_img} {input.pos_cl_bin_img} '
+            '{output} -logical_operator \'and_not\''
+
+rule bin_classification:
+    input: pos_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/pos_{fl}.tif', fl=FILES),
+            neg_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/neg_{fl}.tif', fl=FILES)
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/' + config['classification']['model'] + '_feature_importance.csv'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES} '
+            + IMZML_DIR
+            + ' -result_dir ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES}/{config[classification][model]}_{config[classification][class_balancing_method]} '
+            '-model {config[classification][model]} -balancing_method {config[classification][class_balancing_method]} '
+            '-num {config[classification][num_top_feat]} -n_folds 0'
+
+rule bin_classification_model_evaluation:
+    input: pos_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/pos_{fl}.tif', fl=FILES),
+            neg_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/neg_{fl}.tif', fl=FILES)
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '_ROC_curve.svg'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES} '
+            + IMZML_DIR
+            + ' -result_dir ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES}/{config[classification][model]}_{config[classification][class_balancing_method]} '
+            '-model {config[classification][model]} -balancing_method {config[classification][class_balancing_method]} '
+            '-num {config[classification][num_top_feat]} -n_folds {config[classification][n_folds]}'
+
+rule save_ion_imgs:
+    input: feat_imp=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/' + config['classification']['model'] + '_feature_importance.csv',
+            imzML_fl=IMZML_DIR + '/{fl}.imzML'
+    output: directory(BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '/ion_imgs/{fl}')
+    shell: 'python ' + VIS_SCRIPT_PATH + '/save_ion_imgs.py {input.imzML_fl} \''
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/ion_imgs\' -mz_file {input.feat_imp:q} -num {config[classification][num_top_feat]}'
+
+rule save_ion_umaps:
+    input: feat_imp=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/' + config['classification']['model'] + '_feature_importance.csv',
+            imzML_fl=expand(IMZML_DIR + '/{fl}.imzML', fl=FILES),
+            umap_fl=UMAP_FL
+    output: directory(BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '/ion_umaps')
+    shell: 'python ' + VIS_SCRIPT_PATH + '/intensity_umap.py ' + IMZML_DIR + ' {input.umap_fl} '
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/'
+            + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
+            + '/ion_umaps -mz_file {input.feat_imp} -num {config[classification][num_top_feat]}'
+
+rule mz_similarities:
+    input: imzML_fl=IMZML_DIR + '/{fl}.imzML',
+            pos_cl_fl=BIN_IMG_DIR+ '/reduced_to_meas_pixels/{cl}/pos_{fl}.tif'
+    output: pears_fl=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/pearson_{fl}.csv',
+            cosine_fl=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/cosine_{fl}.csv',
+            top_mz_img=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/top_mz_{fl}.tif'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/mz_spatial_similarity.py {input.imzML_fl:q} {input.pos_cl_fl:q} -result_dir \''
+            + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/spatial_similarity\''
+
+rule overall_similarities:
+    input: pears_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/spatial_similarity/pearson_{fl}.csv', fl=FILES),
+            cosine_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/spatial_similarity/cosine_{fl}.csv', fl=FILES)
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/spatial_similarity/overall_spatial_ranking_pearson.csv'
+    shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/get_overall_spatial_similarity.py \'' + BIN_IMG_DIR
+            + '/reduced_to_meas_pixels/{wildcards.CLASSES}/spatial_similarity\' -result_dir \'' + BIN_IMG_DIR
+            + '/reduced_to_meas_pixels/{wildcards.CLASSES}/spatial_similarity/\' -n {config[classification][num_top_feat]}'
+
+rule combine_feat_imp_spatial_similarity:
+    input: feat_imp=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_'
+            + config['classification']['class_balancing_method'] + '/' + config['classification']['model']
+            + '_feature_importance.csv',
+            pears_corr=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/overall_spatial_ranking_pearson.csv'
+    output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/combined_rankings/top_features.svg'
+    run:
+        if ANNOT_FL == "":
+            shell('python ' + MOL_SIG_SCRIPT_PATH + '/feat_imp_corr_colored.py {input.feat_imp:q} {input.pears_corr:q} -output_dir \''
+                    + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/combined_rankings\'')
+        else:
+            shell('python ' + MOL_SIG_SCRIPT_PATH + '/feat_imp_corr_colored.py {input.feat_imp:q} {input.pears_corr:q} -output_dir \''
+                  + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/combined_rankings\' '
+                              '-annot_file ' + ANNOT_FL)
+

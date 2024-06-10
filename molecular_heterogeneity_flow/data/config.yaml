@@ -1,0 +1,12 @@
+data: '/mnt/xio/data_publication/ly6g_heterogeneity'
+dot_size: 5
+
+umap:
+  metric: 'cosine'
+  n_neighbors: 3
+  min_dist: 0.0
+  use_model: False
+
+hdbscan:
+  min_samples: 30
+  min_cluster_size: 500

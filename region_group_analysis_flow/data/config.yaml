@@ -1,0 +1,15 @@
+data: "/mnt/xio/data_publication/region_group_analysis"
+annotate: True
+
+summarize_spectra:
+  method: 'mean'
+
+statistical_analysis:
+  fold_change_thr: 1.0
+  infected_grp: 'UPEC'
+  control_grp: 'control'
+  save_ion_imgs: 1
+
+heatmap:
+  row_norm: 1
+
