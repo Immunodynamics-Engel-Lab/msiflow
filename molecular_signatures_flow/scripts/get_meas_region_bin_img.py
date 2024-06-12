@@ -7,7 +7,7 @@ import argparse
 
 warnings.filterwarnings('ignore', module='pyimzml')
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.plot import get_spec_img
 

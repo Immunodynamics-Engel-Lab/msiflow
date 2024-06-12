@@ -24,7 +24,7 @@ from sklearn.utils.class_weight import compute_class_weight, compute_sample_weig
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
             smpl_cl_fl = os.path.join(args.bin_img_dir, cl + '_' + fl + '.tif')
             #smpl_cl_fl = os.path.join(args.bin_img_dir, cl + '_' + smpl + '.tif')
             if os.path.exists(smpl_cl_fl):
-                smpl_cl_img = tifffile.imread(os.path.join(args.bin_img_dir, smpl_cl_fl))
+                smpl_cl_img = tifffile.imread(smpl_cl_fl)
                 smpl_cl_px_idx_np = np.nonzero(smpl_cl_img)
                 num_smpl_cl_px = np.count_nonzero(smpl_cl_img)
                 smpl_cl_px_idx = list(tuple(zip([fl] * num_smpl_cl_px, smpl_cl_px_idx_np[1], smpl_cl_px_idx_np[0])))

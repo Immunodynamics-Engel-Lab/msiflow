@@ -11,7 +11,7 @@ import time
 import multiprocessing
 from functools import partial
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg.utils import NormalizeData, get_dataframe_from_imzML, get_similarity_measures, get_mz_img
 
 warnings.filterwarnings('ignore', module='pyimzml')

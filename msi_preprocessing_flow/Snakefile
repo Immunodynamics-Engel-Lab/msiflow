@@ -2,8 +2,8 @@ import os
 from os.path import join
 import sys
 
-sys.path.append("..")
-from pkg.io import files_match_pattern, decode_files
+sys.path.append(".")
+from pkg.io import files_match_pattern
 
 """
 This is a full pre-processing workflow for MSI data (provided as .imzML or .d).
@@ -24,7 +24,7 @@ configfile: 'data/config.yaml'
 msi_pattern = r"[a-zA-z0-9]+_[0-9]+\.(imzML|d)$" # imzML files must be named: condition_sampleno.imzML
 
 
-SCRIPT_PATH = os.path.join(os.getcwd(), 'scripts')
+SCRIPT_PATH = os.path.join('msi_preprocessing_flow', 'scripts')
 SEGMENTATION_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'msi_segmentation_flow/scripts')
 DATA_PATH = config['data']
 

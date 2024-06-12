@@ -8,7 +8,7 @@ import sys
 import argparse
 import matplotlib.colors as mpc
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg.plot import plot_ion_image
 
 warnings.filterwarnings('ignore', module='pyimzml')

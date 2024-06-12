@@ -1,7 +1,7 @@
 from os.path import join
 import sys
 
-sys.path.append("..")
+sys.path.append(".")
 from pkg.io import files_match_pattern, decode_files
 
 
@@ -62,8 +62,8 @@ def get_input_all(classes, bin_img_dir, files, save_imgs, save_umaps, n_folds, m
 configfile: 'data/config.yaml'
 
 
-MOL_SIG_SCRIPT_PATH = 'scripts'
-VIS_SCRIPT_PATH = '../data_visualization'
+MOL_SIG_SCRIPT_PATH = 'molecular_signatures_flow/scripts'
+VIS_SCRIPT_PATH = 'data_visualization'
 DATA_PATH = config['data']
 
 imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML

@@ -40,7 +40,7 @@ def plot_mz_umap(df, mz, out_file, df_control=None, show_neg_group_only=False, c
     if show_neg_group_only:
         fig = sns.scatterplot(x='UMAP_1', y='UMAP_2', data=df_control, color='gainsboro', s=dot_size, linewidth=0)
 
-    for i in tqdm(np.arange(0, 1, 0.001)):
+    for i in tqdm(np.arange(0, 1, 0.01)):
         perc = df[mz].quantile(i)
         df_perc = df[df[mz] > perc]
         sns.scatterplot(x=df_perc['UMAP_1'], y=df_perc['UMAP_2'], c=df_perc['color'].to_numpy(),

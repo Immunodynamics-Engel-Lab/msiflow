@@ -12,7 +12,7 @@ import pandas as pd
 from skimage.filters import threshold_otsu
 from skimage.morphology import binary_closing, disk
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.plot import get_mz_img
 

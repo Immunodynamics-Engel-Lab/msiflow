@@ -14,7 +14,7 @@ import pandas as pd
 import shutil
 from tqdm import tqdm
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg import plot as plot_functions
 

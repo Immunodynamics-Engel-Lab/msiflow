@@ -1,4 +1,4 @@
-data: "/mnt/xio/data_publication/msi_if_registration"
+data: "/Users/philippaspangenberg/Desktop/msiflows_testdata/msi_if_registration"
 
 if_preprocessing:
   radius: 0

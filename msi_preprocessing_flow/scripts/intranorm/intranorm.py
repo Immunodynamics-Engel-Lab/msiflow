@@ -10,7 +10,7 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from tqdm import tqdm
 import seaborn as sns
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.plot import plot_img_heatmap
 

@@ -12,7 +12,7 @@ from skimage.exposure import rescale_intensity
 import matplotlib
 import matplotlib.colors as colors
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.plot import plot_venn2
 

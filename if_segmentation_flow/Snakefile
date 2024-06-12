@@ -15,7 +15,7 @@ output:
 configfile: 'data/config.yaml'
 
 
-IF_SEG_SCRIPT_PATH = 'scripts'
+IF_SEG_SCRIPT_PATH = 'if_segmentation_flow/scripts'
 IMG_DIR = config['data']
 FILES = [os.path.splitext(f)[0] for f in os.listdir(IMG_DIR) if
          os.path.isfile(os.path.join(IMG_DIR,f)) and f.endswith('.tif')]

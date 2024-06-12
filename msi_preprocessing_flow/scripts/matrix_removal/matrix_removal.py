@@ -12,7 +12,7 @@ from tqdm import tqdm
 from scipy.ndimage import binary_dilation, binary_erosion, binary_closing, binary_opening, binary_fill_holes
 from skimage.morphology import remove_small_objects, octagon
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.plot import get_mz_img
 

@@ -1,4 +1,4 @@
-data: '/mnt/xio/data_publication/msi_segmentation'
+data: '/Users/philippaspangenberg/Desktop/msiflows_testdata/msi_segmentation'
 
 general:
   multi_sample: False
@@ -14,7 +14,7 @@ umap:
   min_dist: 0.0
 
 clustering:
-  method: 'hdbscan'
+  method: 'k-means'
   n_clusters: 3
 
 hdbscan:

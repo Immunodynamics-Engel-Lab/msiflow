@@ -1,4 +1,4 @@
-data: "/mnt/xio/BM_neutrophils"
+data: "data"
 
 general:
   matrix_removal: True

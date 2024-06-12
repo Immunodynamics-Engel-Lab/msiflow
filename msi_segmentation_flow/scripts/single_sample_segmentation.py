@@ -17,7 +17,7 @@ from skimage import exposure
 from scipy import ndimage
 import cv2
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.SA import SA
 from pkg.plot import scatterplot_3D, scatterplot_2D, construct_spot_image, plot_img_heatmap, get_spec_img
@@ -367,15 +367,24 @@ if __name__ == '__main__':
         else:
             result_dir = os.path.join(os.path.dirname(args.imzML_file), args.cluster)
         args.result_dir = result_dir
-    if not os.path.exists(args.result_dir):
+    # if not os.path.exists(args.result_dir):
+    #     os.mkdir(args.result_dir)
+    try:
         os.mkdir(args.result_dir)
+    except OSError:
+        pass
     if args.cluster != '':
         # if args.matrix_cluster:
         #     cluster_dir = args.result_dir
         # else:
-        cluster_dir = args.result_dir + '/binary_imgs'
-        if not os.path.exists(cluster_dir):
+        cluster_dir = os.path.join(args.result_dir, 'binary_imgs')
+        #if not os.path.exists(os.path.abspath(cluster_dir)):
+        #    os.mkdir(os.path.abspath(cluster_dir))
+        try:
             os.mkdir(cluster_dir)
+        except OSError:
+            pass
+
     else:
         cluster_dir = ''
 

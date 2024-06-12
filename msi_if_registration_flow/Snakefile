@@ -33,8 +33,8 @@ def get_input(mov_dir, fix_mask_dir, files, input_list=[]):
 configfile: 'data/config.yaml'
 
 
-MSI_IF_REG_SCRIPT_PATH = 'scripts'
-MSI_SEG_SCRIPT_PATH = '../msi_segmentation_flow/scripts'
+MSI_IF_REG_SCRIPT_PATH = 'msi_if_registration_flow/scripts'
+MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 DATA_PATH = config['data']
 
 MOV_DIR = join(DATA_PATH, 'moving')

@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA, TruncatedSVD
 import pickle
 from datetime import datetime
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 from pkg.clustering import kmeans_clustering, HDBSCAN_clustering, hierarchical_clustering, gaussian_mixture
 

@@ -1,7 +1,7 @@
 from os.path import join
 import sys
 
-sys.path.append("..")
+sys.path.append(".")
 from pkg.io import files_match_pattern
 
 
@@ -29,7 +29,7 @@ configfile: 'data/config.yaml'
 
 imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.tif
 
-MSI_SEG_SCRIPT_PATH = 'scripts'
+MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 DATA_PATH = config['data']
 MSI_DIR = join(DATA_PATH, 'msi')
 MSI_FILES = files_match_pattern(MSI_DIR, imzML_pattern)

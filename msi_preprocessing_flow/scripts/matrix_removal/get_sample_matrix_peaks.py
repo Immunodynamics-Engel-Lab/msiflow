@@ -11,7 +11,7 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from tqdm import tqdm
 from scipy.stats.mstats import pearsonr
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 

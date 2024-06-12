@@ -7,7 +7,7 @@ from skimage.morphology import binary_closing, binary_opening, remove_small_obje
 from skimage.filters import threshold_otsu, threshold_yen
 from skimage.filters import gaussian
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 

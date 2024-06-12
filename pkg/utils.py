@@ -4,11 +4,8 @@ from pyimzml.ImzMLParser import ImzMLParser
 import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-#from numba import jit
-from pyimzml.ImzMLWriter import ImzMLWriter
 from scipy.stats.mstats import pearsonr
 from skimage.exposure import rescale_intensity
-from scipy.ndimage import gaussian_filter
 from scipy import spatial
 
 

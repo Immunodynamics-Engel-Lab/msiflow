@@ -49,8 +49,8 @@ configfile: 'data/config.yaml'
 imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.imzML
 bin_img_pattern = r"[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_condition_sampleno.tif
 
-SCRIPT_PATH = 'scripts'
-VIS_SCRIPT_PATH = '../data_visualization'
+SCRIPT_PATH = 'region_group_analysis_flow/scripts'
+VIS_SCRIPT_PATH = 'data_visualization'
 DATA_PATH = config['data']
 
 IMZML_DIR = join(DATA_PATH, 'msi')

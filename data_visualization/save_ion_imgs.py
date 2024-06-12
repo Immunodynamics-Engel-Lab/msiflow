@@ -7,7 +7,7 @@ import numpy as np
 import multiprocessing
 from functools import partial
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg.plot import plot_ion_image
 
 warnings.filterwarnings('ignore', module='pyimzml')

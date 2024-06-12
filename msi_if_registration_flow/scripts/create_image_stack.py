@@ -4,7 +4,7 @@ import tifffile as tf
 import argparse
 import sys
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 

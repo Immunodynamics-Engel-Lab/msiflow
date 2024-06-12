@@ -1,7 +1,7 @@
 from os.path import join
 import sys
 
-sys.path.append("..")
+sys.path.append(".")
 from pkg.io import files_match_pattern, decode_files
 
 
@@ -26,9 +26,9 @@ output:
 configfile: 'data/config.yaml'
 
 
-MOL_HET_SCRIPT_PATH = 'scripts'
-VIS_SCRIPT_PATH = '../data_visualization'
-MSI_SEG_SCRIPT_PATH = '../msi_segmentation_flow/scripts'
+MOL_HET_SCRIPT_PATH = 'molecular_heterogeneity_flow/scripts'
+VIS_SCRIPT_PATH = 'data_visualization'
+MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 
 
 imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML

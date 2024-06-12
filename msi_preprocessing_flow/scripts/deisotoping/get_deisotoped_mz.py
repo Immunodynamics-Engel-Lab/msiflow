@@ -7,7 +7,7 @@ from pyimzml.ImzMLParser import ImzMLParser
 import matplotlib.pyplot as plt
 import sys
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg.utils import get_combined_dataframe_from_files
 
 
