@@ -1,5 +1,5 @@
 ![msiFlow](imgs/msiFlow_logo.svg)
-##automated workflows for reproducible and scalable multimodal mass spectrometry imaging (MSI) and immunofluorescence microscopy (IFM) data processing and analysis
+# automated workflows for reproducible and scalable multimodal mass spectrometry imaging (MSI) and immunofluorescence microscopy (IFM) data processing and analysis
 
 ***
 
