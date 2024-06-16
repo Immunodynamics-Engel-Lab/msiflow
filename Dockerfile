@@ -9,16 +9,16 @@ RUN apt-get update -y
 
 WORKDIR /home/user/
 
-COPY . /home/user/msiflows
+COPY . /home/user/msiflow
 
-WORKDIR /home/user/msiflows
+WORKDIR /home/user/msiflow
 
-ENV PYTHONPATH "${PYTHONPATH}:/home/user/msiflows"
+ENV PYTHONPATH "${PYTHONPATH}:/home/user/msiflow"
 
 # For fixing ImportError: libGL.so.1: cannot open shared object file: No such file or directory
 RUN apt install -y libgl1-mesa-glx
 
 # install all python packages
-RUN python3.12 -m pip install -r /home/user/msiflows/requirements.txt
+RUN python3.12 -m pip install -r /home/user/msiflow/requirements.txt
 
-CMD snakemake --cores $CORES --snakefile /home/user/msiflows/$WORKFLOW/Snakefile
+CMD snakemake --cores $CORES --snakefile /home/user/msiflow/$WORKFLOW/Snakefile
