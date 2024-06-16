@@ -1,7 +1,10 @@
-![msiFlow](imgs/msiFlow_logo.svg)
-# automated workflows for reproducible and scalable multimodal mass spectrometry imaging (MSI) and immunofluorescence microscopy (IFM) data processing and analysis
+<p align="center">
+  <img src="imgs/msiFlow_logo.svg" width=500/>
+</p>
 
-***
+<h2 align="center">
+automated workflows for reproducible and scalable multimodal mass spectrometry imaging and immunofluorescence microscopy data processing and analysis
+</h2>
 
 msiFlow contains 7 snakemake workflows:
 
