@@ -1,12 +1,12 @@
-data: "/Users/philippaspangenberg/Desktop/msiflows_testdata/ly6g_heterogeneity_signatures"
+data: "/mnt/xio/UPEC_11_outlier_test"
 
 classification:
   model: "XGBoost"
   img_channels: ""
-  multiclass: True
-  class_balancing_method: "weights"
+  multiclass: False
+  class_balancing_method: "standard"
   num_top_feat: 10
-  save_ion_imgs: true
-  save_umap_imgs: True
-  n_folds: 3
-  annotate: True
+  save_ion_imgs: True
+  save_umap_imgs: False
+  n_folds: 0
+  annotate: False

@@ -30,11 +30,12 @@ MOL_HET_SCRIPT_PATH = 'molecular_heterogeneity_flow/scripts'
 VIS_SCRIPT_PATH = 'data_visualization'
 MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 
-
-imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
-roi_img_pattern = r"[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: roi_group_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
+roi_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: roi_group_sampleno.tif
 
 DATA_PATH = config['data']
+# BENCHMARK_PATH = os.path.join(DATA_PATH, 'benchmark')
+# BM_REPEAT = 5
 IMZML_DIR = join(DATA_PATH, 'msi')
 ROI_IMG_DIR = join(DATA_PATH, 'bin_imgs')
 IMZML_FILES = files_match_pattern(IMZML_DIR, imzML_pattern)
@@ -56,11 +57,13 @@ rule reduce_spectra_to_roi_pixels:
     input: bin_img=ROI_IMG_DIR + "/{roi}_{fl}.tif",
             imzML_fl=IMZML_DIR + "/{fl}.imzML"
     output: ROI_IMG_DIR + "/{roi}/imzML/{fl}.imzML"
+    # benchmark: repeat(BENCHMARK_PATH + "/{roi}_{fl}.reduce_spectra_to_roi_pixels.benchmark.txt", BM_REPEAT)
     shell: "python " + MOL_HET_SCRIPT_PATH + "/get_spectra_from_mask.py {input.imzML_fl} {input.bin_img} {output}"
 
 rule umap_segment:
     input: expand(ROI_IMG_DIR + "/{{ROIS}}/imzML/{fl}.imzML", fl=FILE_NAMES)
     output: expand(ROI_IMG_DIR + "/{{ROIS}}/umap_" + str(config['umap']['n_neighbors']) + "neighb_hdbscan_" + str(config['hdbscan']['min_samples']) + "ms_" + str(config['hdbscan']['min_cluster_size']) + "mcs" + "/{fl}.png",fl=FILE_NAMES)
+    # benchmark: repeat(BENCHMARK_PATH + "/{{ROIS}}.umap_segment.benchmark.txt", BM_REPEAT)
     run:
         if UMAP_MODEL != '':
             shell("python " + MSI_SEG_SCRIPT_PATH + "/multi_sample_segmentation.py " + ROI_IMG_DIR + "/{wildcards.ROIS}/imzML "

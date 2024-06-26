@@ -7,7 +7,7 @@ from pyimzml.ImzMLParser import ImzMLParser
 from tqdm import tqdm
 import numpy as np
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg import utils
 
 

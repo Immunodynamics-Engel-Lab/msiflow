@@ -23,7 +23,8 @@ def segment(img, sigma, thr_method, min_size):
     # img = rescale_intensity(img, in_range=(low, up))
 
     # thresholding
-    img = img > threshold_otsu(img)
+    thr = utils.apply_threshold(img, thr_method)
+    img = img > thr
 
     # remove small objects
     img = remove_small_objects(img, min_size)
@@ -38,7 +39,8 @@ if __name__ == '__main__':
     parser.add_argument('input', type=str, help='input tif image (stack)')
     parser.add_argument('-output', type=str, default='', help='output file to save segmented image')
     parser.add_argument('-sigma', type=int, default=1, help='sigma for Gaussian smoothing')
-    parser.add_argument('-thr_method', type=str, default='otsu', help='threshold algorithm')
+    parser.add_argument('-thr_method', type=str, default='otsu', help='threshold algorithm',
+                        choices=['otsu', 'yen', 'isodata', 'mean', 'minimum', 'triangle'])
     parser.add_argument('-min_size', type=int, default=10, help='all objects below this size will be removed')
     parser.add_argument('-chan_to_segment', type=int, default=10, help='all objects below this size will be removed')
     parser.add_argument('-chan_to_seg_list', type=lambda s: [int(item)-1 for item in s.split(',')], default=[],

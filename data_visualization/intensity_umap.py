@@ -6,7 +6,7 @@ import warnings
 import sys
 from skimage.exposure import equalize_adapthist, rescale_intensity
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pkg import utils
 from pkg.plot import plot_mz_umap
 

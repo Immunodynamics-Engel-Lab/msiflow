@@ -27,10 +27,12 @@ def get_input_all(msi_dir, files, multi_sample, input_list=[]):
 
 configfile: 'data/config.yaml'
 
-imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.tif
 
 MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 DATA_PATH = config['data']
+BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
+BM_REPEAT = 5
 MSI_DIR = join(DATA_PATH, 'msi')
 MSI_FILES = files_match_pattern(MSI_DIR, imzML_pattern)
 MSI_FILES = [f.split('.')[0] for f in MSI_FILES]
@@ -42,6 +44,7 @@ rule all:
 rule single_sample_segmentation:
     input: MSI_DIR + '/{fl}.imzML'
     output: MSI_DIR + '/segmented/{fl}_cluster_image.svg'
+    benchmark: repeat(BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MSI_SEG_SCRIPT_PATH + '/single_sample_segmentation.py {input:q} -result_dir ' + MSI_DIR + '/segmented '
             + '-method {config[dim_reduction][method]} -n_components {config[dim_reduction][n_components]} '
               '-metric {config[umap][metric]} -n_neighbors {config[umap][n_neighbors]} -min_dist {config[umap][min_dist]} '
@@ -52,6 +55,7 @@ rule single_sample_segmentation:
 rule multi_sample_segmentation:
     input: expand(MSI_DIR + '/{fl}.imzML', fl=MSI_FILES)
     output: expand(MSI_DIR + '/segmented/{fl}.png', fl=MSI_FILES)
+    benchmark: repeat(BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MSI_SEG_SCRIPT_PATH + '/multi_sample_segmentation.py ' + MSI_DIR + ' -result_dir '
             + MSI_DIR + '/segmented -method {config[dim_reduction][method]} -dist_metric {config[umap][metric]} '
                         '-n_neighbors {config[umap][n_neighbors]} -min_dist {config[umap][min_dist]} '

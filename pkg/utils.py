@@ -7,6 +7,23 @@ import matplotlib.pyplot as plt
 from scipy.stats.mstats import pearsonr
 from skimage.exposure import rescale_intensity
 from scipy import spatial
+from skimage.filters import threshold_otsu, threshold_yen, threshold_isodata, threshold_mean, threshold_minimum, threshold_triangle
+
+
+def apply_threshold(img, thresh_algorithm):
+    if thresh_algorithm == 'otsu':
+        thresh = threshold_otsu(img)
+    elif thresh_algorithm == 'yen':
+        thresh = threshold_yen(img)
+    elif thresh_algorithm == 'isodata':
+        thresh = threshold_isodata(img)
+    elif thresh_algorithm == 'mean':
+        thresh = threshold_mean(img)
+    elif thresh_algorithm == 'minimum':
+        thresh = threshold_minimum(img)
+    elif thresh_algorithm == 'triangle':
+        thresh = threshold_triangle(img)
+    return thresh
 
 
 def intensities_generator(imzmlParser, mz_index, selection=slice(None)):

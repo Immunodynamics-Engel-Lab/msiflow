@@ -9,43 +9,28 @@ import sys
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-from skimage.filters import threshold_otsu
 from skimage.morphology import binary_closing, disk
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg import utils
 from pkg.plot import get_mz_img
-
-
-def get_combi_mz_img(pyx, msi_df, mzs, method='mean'):
-    coords = msi_df.index.tolist()
-    msi_img = np.zeros(pyx).astype(np.uint8)
-    msi_df_mzs = msi_df[list(mzs)]
-    if method == 'mean':
-        vals = msi_df_mzs.mean(axis=1)
-    elif method == 'max':
-        vals = msi_df_mzs.max(axis=1)
-    else:
-        vals = msi_df_mzs.median(axis=1)
-    msi_df_mzs['vals'] = vals
-    for x_val, y_val in coords:
-        msi_img[y_val - 1, x_val - 1] = msi_df_mzs.loc[(x_val, y_val), 'vals']
-    return msi_img
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Creates binary image from m/z images')
     parser.add_argument('imzML_file', type=str, help='imzML file')
     parser.add_argument('mzlist', help='m/z list', type=str)
-    parser.add_argument('-tol', type=float, default=0.1, help='tolerance for ion image generation')
+    parser.add_argument('-tol', type=float, default=0.01, help='tolerance for ion image generation')
+    parser.add_argument('-threshold', type=str, default='otsu', help='thresholding algorithm',
+                        choices=['otsu', 'yen', 'isodata', 'mean', 'minimum', 'triangle'])
     parser.add_argument('-result_dir', type=str, default='', help='directory to save results')
     parser.add_argument('-method', type=str, default='mean', help='method to get combined image')
     args = parser.parse_args()
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML_file), "matrix_removal")
-        if not os.path.exists(args.result_dir):
-            os.mkdir(args.result_dir)
+    if not os.path.exists(args.result_dir):
+        os.mkdir(args.result_dir)
 
     mz_list = [float(item) for item in args.mzlist.split(',')]
     p = ImzMLParser(args.imzML_file)
@@ -60,8 +45,10 @@ if __name__ == '__main__':
         imgs.append(ion_img)
     stacked = np.dstack(imgs)
     mean_img = stacked.sum(axis=2)
+    tifffile.imwrite(os.path.join(args.result_dir, fl_name + '_sum_matrix_mzs_img.tif'),
+                     data=(utils.NormalizeData(mean_img) * 255).astype('uint8'))
 
-    thresh = threshold_otsu(mean_img)
+    thresh = utils.apply_threshold(mean_img, args.threshold)
     binary = (mean_img > thresh)
     binary = binary_closing(binary, disk(2)) * 1
     tifffile.imwrite(os.path.join(args.result_dir, fl_name + '_matrix_cluster.tif'),

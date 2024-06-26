@@ -21,20 +21,26 @@ output:
 configfile: 'data/config.yaml'
 
 
-msi_pattern = r"[a-zA-z0-9]+_[0-9]+\.(imzML|d)$" # imzML files must be named: condition_sampleno.imzML
+msi_pattern = r"^[a-zA-z0-9]+_[0-9]+\.(imzML|d)$" # imzML files must be named: condition_sampleno.imzML
 
 
 SCRIPT_PATH = os.path.join('msi_preprocessing_flow', 'scripts')
 SEGMENTATION_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'msi_segmentation_flow/scripts')
 DATA_PATH = config['data']
 
-BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
+# BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
+# BM_REPEAT = 5
 INPUT_DIR = join(DATA_PATH, 'msi')
 OUT_DIR = join(DATA_PATH, 'msi')
 FILES = files_match_pattern(INPUT_DIR, msi_pattern)
 FILES = [f.split('.')[0] for f in FILES]
 EXT = [f.split('.')[1] for f in os.listdir(INPUT_DIR) if f.endswith('.d') or f.endswith('.imzML')][0]
 #print('found {} files. \n processing files: {}'.format(len(FILES), FILES))
+
+if config['matrix_removal']['matrix_mzs']:
+    ruleorder: get_matrix_img_list > single_sample_segmentation
+else:
+    ruleorder: single_sample_segmentation > get_matrix_img_list
 
 
 def get_input(out_dir, files, input_list=[]):
@@ -61,14 +67,18 @@ def get_input(out_dir, files, input_list=[]):
 
 
 def get_output_path_single_sample_segmentation():
-    output = (OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_'
-              + str(config['alignment']['pixel_percentage']) + 'pxperc/' + config['matrix_removal']['dim_reduction'])
-    if config['matrix_removal']['dim_reduction'] == 'umap':
-        output += (str(config['matrix_removal']['umap_params']['n_neighbors']) + 'neighb_'
-                   + config['matrix_removal']['cluster_algorithm'])
-    if config['matrix_removal']['cluster_algorithm'] == 'hdbscan':
-        output += ('_' + str(config['matrix_removal']['hdbscan_params']['min_samples']) + 'ms_'
-                   + str(config['matrix_removal']['hdbscan_params']['min_cluster_size']) + 'mcs')
+    if not config['matrix_removal']['matrix_mzs']:
+        output = (OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_'
+                  + str(config['alignment']['pixel_percentage']) + 'pxperc/' + config['matrix_removal']['dim_reduction'])
+        if config['matrix_removal']['dim_reduction'] == 'umap':
+            output += (str(config['matrix_removal']['umap_params']['n_neighbors']) + 'neighb_'
+                       + config['matrix_removal']['cluster_algorithm'])
+        if config['matrix_removal']['cluster_algorithm'] == 'hdbscan':
+            output += ('_' + str(config['matrix_removal']['hdbscan_params']['min_samples']) + 'ms_'
+                       + str(config['matrix_removal']['hdbscan_params']['min_cluster_size']) + 'mcs')
+    else:
+        output = (OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_'
+                  + str(config['alignment']['pixel_percentage']) + 'pxperc')
     return output
 
 
@@ -164,7 +174,7 @@ rule all:
 rule peak_picking:
     input: INPUT_DIR + '/{fl}.' + EXT
     output: OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.peak_picking.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.peak_picking.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_picking/peak_picking.py {input:q} -snr {config[peak_picking][snr]} \
             -window_size {config[peak_picking][window]} -order {config[peak_picking][order]} -smooth {config[peak_picking][smooth]} \
             -out_dir \'' + INPUT_DIR + '/peakpicking_{config[peak_picking][snr]}snr\''
@@ -172,7 +182,7 @@ rule peak_picking:
 rule get_reference_spectrum:
    input: expand(OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/{fl}.imzML', fl=FILES)
    output: OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc/cmz.npy'
-   benchmark: BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt"
+   # benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
    shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py \'' +  OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr' +
            '\' -result_dir \'' + OUT_DIR + '/peakpicking_{config[peak_picking][snr]}snr/alignment_{config[alignment][pixel_percentage]}pxperc\' \
            -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]}'
@@ -183,7 +193,7 @@ rule alignment:
                        + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc/cmz.npy'
     output: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.alignment.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.alignment.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/alignment/alignment.py {input.file} {input.reference} -result_dir \'' + OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr'])
            + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc\''
 
@@ -191,7 +201,7 @@ rule single_sample_segmentation:
     input: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML'
     output: get_output_path_single_sample_segmentation() + '/binary_imgs/{fl}_matrix_cluster.tif'
-    benchmark: BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/single_sample_segmentation.py {input:q} \
             -result_dir ' + get_output_path_single_sample_segmentation() + ' -method {config[matrix_removal][dim_reduction]} -n_components {config[matrix_removal][n_components]}'
             ' -metric {config[matrix_removal][umap_params][metric]} -n_neighbors {config[matrix_removal][umap_params][n_neighbors]}'
@@ -199,13 +209,21 @@ rule single_sample_segmentation:
             ' -min_cluster_size {config[matrix_removal][hdbscan_params][min_cluster_size]} -min_samples {config[matrix_removal][hdbscan_params][min_samples]}'
             ' -matrix_cluster True -cluster {config[matrix_removal][cluster_algorithm]}'
 
+rule get_matrix_img_list:
+    input: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
+            + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML'
+    output: get_output_path_single_sample_segmentation() + '/binary_imgs/{fl}_matrix_cluster.tif'
+    shell: 'python ' + SCRIPT_PATH + '/matrix_removal/get_matrix_pixels_from_mz_list.py {input} '
+            '{config[matrix_removal][matrix_mzs]} -result_dir ' + get_output_path_single_sample_segmentation() + '/binary_imgs '
+            '-threshold {config[matrix_removal][thr_method]}'
+
 rule get_matrix_pixels:
     input: imzML_file = OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML',
             matrix_img = get_output_path_single_sample_segmentation() + '/binary_imgs/{fl}_matrix_cluster.tif'
     output: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/matrix_removal/{fl}_extended_matrix_image.tif'
-    benchmark: BENCHMARK_PATH + "/{fl}.get_matrix_pixels.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.get_matrix_pixels.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/matrix_removal/get_matrix_pixels_from_segmentation.py {input.imzML_file} '
             + get_output_path_single_sample_segmentation() + '/binary_imgs/ -result_dir ' + OUT_DIR + '/peakpicking_'
             +  str(config['peak_picking']['snr']) + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc/matrix_removal/'
@@ -218,7 +236,7 @@ rule matrix_removal:
             + str(config['alignment']['pixel_percentage']) + 'pxperc/matrix_removal/{fl}_extended_matrix_image.tif'
     output: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/matrix_removal/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.matrix_removal.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.matrix_removal.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/matrix_removal/matrix_removal.py {input.imzML_file:q} {input.extended_matrix_img:q} '
             '-proc_matrix_img {config[matrix_removal][matrix_postproc]} -pixel_removal {config[matrix_removal][pixel_removal]}'
             ' -matrix_subtraction {config[matrix_removal][matrix_subtraction]}'
@@ -228,7 +246,7 @@ rule matrix_removal:
 rule calc_spatial_coherence:
     input: get_io_path_spatial_coherence()[0] + '/{fl}.imzML'
     output: get_io_path_spatial_coherence()[0] + '/{fl}_sc.csv'
-    benchmark: BENCHMARK_PATH + "/{fl}.calc_spatial_coherence.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.calc_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/spatial_coherence.py {input:q} -result_dir \''
             + get_io_path_spatial_coherence()[0] + '\''
 
@@ -236,7 +254,7 @@ rule sum_spatial_coherence:
     input: sc_files = expand(get_io_path_spatial_coherence()[0] + '/{fl}_sc.csv', fl=FILES),
            imzML_files = expand(get_io_path_spatial_coherence()[0] + '/{fl}.imzML', fl=FILES)
     output: get_io_path_spatial_coherence()[0] + '/peaks_above_' + str(config['peak_filtering']['thr']) + 'sc.npy'
-    benchmark: BENCHMARK_PATH + "/sum_spatial_coherence.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/sum_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/get_mzs_above_spatial_coherence_thr.py ' + get_io_path_spatial_coherence()[0]
             + ' ' + get_io_path_spatial_coherence()[0] + ' ' + get_io_path_spatial_coherence()[0]
             + ' -thr ' + str(config['peak_filtering']['thr']) + ' -sum ' + str(config['peak_filtering']['sum'])
@@ -245,14 +263,14 @@ rule filter_spatial_coherence:
     input: imzML_file = get_io_path_spatial_coherence()[0] + '/{fl}.imzML',
            sc_thr_file = get_io_path_spatial_coherence()[0] + '/peaks_above_' + str(config['peak_filtering']['thr']) + 'sc.npy'
     output: get_io_path_spatial_coherence()[1] + '/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.filter_spatial_coherence.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.filter_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/filter_spatial_coherence.py {input.imzML_file} '
             '{config[peak_filtering][thr]} {input.sc_thr_file} -result_dir \'' +  get_io_path_spatial_coherence()[1] + '\''
 
 rule intranorm:
     input: get_path_intranorm() + '/{fl}.imzML'
     output: get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.intranorm.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.intranorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/intranorm/intranorm.py {input:q} -result_dir \'' \
             + get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '\' \
             -method {config[intranorm][method]}'
@@ -260,7 +278,7 @@ rule intranorm:
 rule median_spectrum:
     input: expand(get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/{fl}.imzML', fl=FILES)
     output: get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/median_spectrum.npy'
-    benchmark: BENCHMARK_PATH + "/median_spectrum.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/median_spectrum.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/get_median_overall_spectrum.py \'' \
             + get_path_intranorm() + '/intranorm_' + config['intranorm']['method']  + ' {output:q}'
 
@@ -268,14 +286,14 @@ rule internorm_mfc:
     input: file = get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/{fl}.imzML',
             reference = rules.median_spectrum.output
     output: get_path_internorm() + '/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/internorm.py {input.file:q} -result_dir \'' \
            + get_path_internorm() + '\' -method {config[internorm][method]} -reference {input.reference:q}'
 
 rule internorm:
     input: get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/{fl}.imzML'
     output: get_path_internorm() + '/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/internorm.py {input.file:q} -result_dir \'' \
            + get_path_internorm() + '\' -method {config[internorm][method]}'
 
@@ -284,7 +302,7 @@ rule multi_sample_segmentation:
     #output: seg_imgs = get_io_path_multi_sample_segmentation()[1]  + '/{fl}.png',
     #        umap_data = get_io_path_multi_sample_segmentation()[1] + '/umap_data.csv'
     output: umap_data = get_io_path_multi_sample_segmentation()[1] + '/umap_data.csv'
-    benchmark: BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/multi_sample_segmentation.py ' + get_io_path_multi_sample_segmentation()[0]
             + '-result_dir \'' + get_io_path_multi_sample_segmentation()[1]
             + '\' -n_neighbors {config[outlier_detection][umap_params][n_neighbors]}'
@@ -295,7 +313,7 @@ rule outlier_detection:
     input: umap_data = rules.multi_sample_segmentation.output.umap_data,
             imzML_files = expand(get_io_path_outlier_detection()[0] + '/{fl}.imzML', fl=FILES)
     output: expand(get_io_path_outlier_detection()[1] + '/{fl}.imzML', fl=FILES)
-    benchmark: BENCHMARK_PATH + "/outlier_detection.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/outlier_detection.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/outlier_detection/umap_outlier_detection.py {input:q} '
             + get_io_path_outlier_detection()[0] + '-result_dir \'' + get_io_path_outlier_detection()[1]
             + '\' -cluster_thr {config[outlier_detection][cluster_thr]} -sample_thr {config[outlier_detection][sample_thr]}'
@@ -304,7 +322,7 @@ rule outlier_detection:
 rule get_deisotoped_mz:
     input: expand(get_io_path_deisotoping()[0] + '/{fl}.imzML', fl=FILES)
     output: get_io_path_deisotoping()[1] + '/deiso_mz.npy'
-    benchmark: BENCHMARK_PATH + "/get_deisotoped_mz.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/get_deisotoped_mz.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/deisotoping/get_deisotoped_mz.py \'' + get_io_path_deisotoping()[0] +
             '\' -result_dir \'' + get_io_path_deisotoping()[1] + '\' \
             -tolerance {config[deisotoping][tolerance]} -min_isotopes {config[deisotoping][min_isotopes]} \
@@ -314,7 +332,7 @@ rule deisotoping:
     input: reference = get_io_path_deisotoping()[1] + '/deiso_mz.npy',
             file = get_io_path_deisotoping()[0] + '/{fl}.imzML'
     output: get_io_path_deisotoping()[1] + '/{fl}.imzML'
-    benchmark: BENCHMARK_PATH + "/{fl}.deisotoping.benchmark.txt"
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.deisotoping.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/deisotoping/deisotope.py {input.file:q} {input.reference:q} \
             -result_dir \'' + get_io_path_deisotoping()[1] + '\''
 

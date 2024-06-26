@@ -9,7 +9,7 @@ from tqdm import tqdm
 import pandas as pd
 from skimage.morphology import remove_small_objects
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 

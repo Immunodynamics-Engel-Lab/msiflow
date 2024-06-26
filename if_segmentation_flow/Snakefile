@@ -18,7 +18,9 @@ configfile: 'data/config.yaml'
 IF_SEG_SCRIPT_PATH = 'if_segmentation_flow/scripts'
 IMG_DIR = config['data']
 FILES = [os.path.splitext(f)[0] for f in os.listdir(IMG_DIR) if
-         os.path.isfile(os.path.join(IMG_DIR,f)) and f.endswith('.tif')]
+         os.path.isfile(os.path.join(IMG_DIR,f)) and f.endswith('.tif') and not f.startswith('.')]
+# BENCHMARK_PATH = os.path.join(IMG_DIR, 'benchmark')
+# BM_REPEAT = 5
 
 rule all:
     input: expand(IMG_DIR + '/segmented/{fl}.tif', fl=FILES)
@@ -26,6 +28,7 @@ rule all:
 rule segment:
     input: IMG_DIR + '/{fl}.tif'
     output: IMG_DIR + '/segmented/{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.segment.benchmark.txt", BM_REPEAT)
     shell: 'python ' + IF_SEG_SCRIPT_PATH + '/segment.py {input:q} -output {output:q} '
             '-sigma {config[if_segmentation][gauss_sigma]} '
             '-thr_method {config[if_segmentation][threshold_algorithm]} -min_size {config[if_segmentation][min_size]} '

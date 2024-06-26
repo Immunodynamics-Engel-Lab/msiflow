@@ -41,6 +41,7 @@ matrix_removal:
   pixel_perc_thr: 70
   matrix_postproc: 0
   matrix_mzs: '855.07,861.08,877.05,1066.1,1082.07'
+  thr_method: 'yen'
 
 peak_filtering:
   sum: max

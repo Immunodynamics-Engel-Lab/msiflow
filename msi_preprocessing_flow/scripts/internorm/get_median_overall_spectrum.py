@@ -3,7 +3,7 @@ import sys
 import os
 import numpy as np
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg.utils import get_mean_spectrum, get_summarized_spectrum, get_dataframe_from_imzML, get_combined_dataframe_from_files
 
 

@@ -13,7 +13,7 @@ from scipy.ndimage import binary_dilation
 from skimage.morphology import remove_small_objects
 from scipy.stats import pearsonr, spearmanr
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg import utils
 from pkg.plot import get_mz_img
 

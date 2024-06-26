@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
 
 warnings.filterwarnings('ignore', module='pyimzml')

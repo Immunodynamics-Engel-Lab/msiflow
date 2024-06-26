@@ -65,10 +65,12 @@ configfile: 'data/config.yaml'
 MOL_SIG_SCRIPT_PATH = 'molecular_signatures_flow/scripts'
 VIS_SCRIPT_PATH = 'data_visualization'
 DATA_PATH = config['data']
+# BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
+# BM_REPEAT = 5
 
-imzML_pattern = r"[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
-bin_img_pattern = r"[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_group_sampleno.tif
-img_stack_pattern = r"[a-zA-z0-9]+_[0-9]+\.tif$"  # image stack files must be named: group_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
+bin_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_group_sampleno.tif
+img_stack_pattern = r"^[a-zA-z0-9]+_[0-9]+\.tif$"  # image stack files must be named: group_sampleno.tif
 
 SAVE = config['classification']['save_ion_imgs']
 SAVE_UMAP = config['classification']['save_umap_imgs']
@@ -103,17 +105,20 @@ rule all:
 rule get_meas_pixels_img:
     input: IMZML_DIR + '/{fl}.imzML'
     output: IMZML_DIR + '/meas_pixels/{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.get_meas_pixels_img.benchmark.txt", BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/get_meas_region_bin_img.py {input} -out_dir ' + IMZML_DIR + '/meas_pixels'
 
 rule stack_to_images:
     input: BIN_IMG_DIR + '/{FILES}.tif'
     output: expand(BIN_IMG_DIR + '/{cl}_{{FILES}}.tif', cl=CLASSES)
+    # benchmark: repeat(BENCHMARK_PATH + "/{FILES}_stack_to_images.benchmark.txt", BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/stack_to_images.py {input} -out_dir ' + BIN_IMG_DIR +
             ' -channels {config[classification][img_channels]}'
 
 rule reduce_img_to_meas_region:
     input: roi=BIN_IMG_DIR + '/{cl}_{fl}.tif', meas_region=IMZML_DIR + '/meas_pixels/{fl}.tif'
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}_{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_{fl}_reduce_img_to_meas_region.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/combine_binary_imgs.py {input.roi:q} {input.meas_region:q} {output:q}'
             ' -logical_operator \'and\''
 
@@ -122,6 +127,7 @@ rule multi_classification:
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/'
             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
             + '/' + config['classification']['model'] + '_feature_importance.csv'
+    # benchmark: repeat(BENCHMARK_PATH + "/multi_classification.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
             + BIN_IMG_DIR + '/reduced_to_meas_pixels ' + IMZML_DIR
             + ' -result_dir ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{config[classification][model]}_{config[classification][class_balancing_method]} '
@@ -131,11 +137,13 @@ rule multi_classification:
 rule create_pos_class_img:
     input: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}_{fl}.tif'
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/pos_{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_{fl}_create_pos_class_img.benchmark.txt",BM_REPEAT)
     shell: 'mkdir -p ' + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}' + '&& cp {input} {output}'
 
 rule create_neg_class_img:
     input: pos_cl_bin_img=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/pos_{fl}.tif', meas_pixels_img=IMZML_DIR + '/meas_pixels/{fl}.tif'
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/neg_{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_{fl}_create_neg_class.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/combine_binary_imgs.py {input.meas_pixels_img} {input.pos_cl_bin_img} '
             '{output} -logical_operator \'and_not\''
 
@@ -145,6 +153,7 @@ rule bin_classification:
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/'
             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
             + '/' + config['classification']['model'] + '_feature_importance.csv'
+    # benchmark: repeat(BENCHMARK_PATH + "/{CLASSES}_bin_classification.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
             + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES} '
             + IMZML_DIR
@@ -158,6 +167,7 @@ rule bin_classification_model_evaluation:
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/'
             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
             + '/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '_ROC_curve.svg'
+    # benchmark: repeat(BENCHMARK_PATH + "/{CLASSES}_bin_classification_model_evaluation.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/classification_feature_detection.py '
             + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.CLASSES} '
             + IMZML_DIR
@@ -171,6 +181,7 @@ rule save_ion_imgs:
             + '/' + config['classification']['model'] + '_feature_importance.csv',
             imzML_fl=IMZML_DIR + '/{fl}.imzML'
     output: directory(BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '/ion_imgs/{fl}')
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_{fl}_save_ion_imgs.benchmark.txt",BM_REPEAT)
     shell: 'python ' + VIS_SCRIPT_PATH + '/save_ion_imgs.py {input.imzML_fl} \''
             + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/'
             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
@@ -183,6 +194,7 @@ rule save_ion_umaps:
             imzML_fl=expand(IMZML_DIR + '/{fl}.imzML', fl=FILES),
             umap_fl=UMAP_FL
     output: directory(BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/' + config['classification']['model'] + '_' + config['classification']['class_balancing_method'] + '/ion_umaps')
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_save_ion_umaps.benchmark.txt",BM_REPEAT)
     shell: 'python ' + VIS_SCRIPT_PATH + '/intensity_umap.py ' + IMZML_DIR + ' {input.umap_fl} '
             + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/'
             + config['classification']['model'] + '_' + config['classification']['class_balancing_method']
@@ -194,6 +206,7 @@ rule mz_similarities:
     output: pears_fl=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/pearson_{fl}.csv',
             cosine_fl=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/cosine_{fl}.csv',
             top_mz_img=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/top_mz_{fl}.tif'
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_{fl}_mz_similarities.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/mz_spatial_similarity.py {input.imzML_fl:q} {input.pos_cl_fl:q} -result_dir \''
             + BIN_IMG_DIR + '/reduced_to_meas_pixels/{wildcards.cl}/spatial_similarity\''
 
@@ -201,6 +214,7 @@ rule overall_similarities:
     input: pears_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/spatial_similarity/pearson_{fl}.csv', fl=FILES),
             cosine_fls=expand(BIN_IMG_DIR + '/reduced_to_meas_pixels/{{CLASSES}}/spatial_similarity/cosine_{fl}.csv', fl=FILES)
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{CLASSES}/spatial_similarity/overall_spatial_ranking_pearson.csv'
+    # benchmark: repeat(BENCHMARK_PATH + "/{CLASSES}_overall_similarities.benchmark.txt",BM_REPEAT)
     shell: 'python ' + MOL_SIG_SCRIPT_PATH + '/get_overall_spatial_similarity.py \'' + BIN_IMG_DIR
             + '/reduced_to_meas_pixels/{wildcards.CLASSES}/spatial_similarity\' -result_dir \'' + BIN_IMG_DIR
             + '/reduced_to_meas_pixels/{wildcards.CLASSES}/spatial_similarity/\' -n {config[classification][num_top_feat]}'
@@ -211,6 +225,7 @@ rule combine_feat_imp_spatial_similarity:
             + '_feature_importance.csv',
             pears_corr=BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/spatial_similarity/overall_spatial_ranking_pearson.csv'
     output: BIN_IMG_DIR + '/reduced_to_meas_pixels/{cl}/combined_rankings/top_features.svg'
+    # benchmark: repeat(BENCHMARK_PATH + "/{cl}_combine_feat_imp_spatial_similarity.benchmark.txt",BM_REPEAT)
     run:
         if ANNOT_FL == "":
             shell('python ' + MOL_SIG_SCRIPT_PATH + '/feat_imp_corr_colored.py {input.feat_imp:q} {input.pears_corr:q} -output_dir \''
