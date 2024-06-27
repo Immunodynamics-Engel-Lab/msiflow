@@ -1,0 +1,11 @@
+data: "data"
+
+if_preprocessing:
+  radius: 0
+  sigma: 0
+  lower_perc: 0.0
+  upper_perc: 0.0
+
+registration:
+  af_chan: 2
+  mask_val_chan: 3
