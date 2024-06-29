@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     # load deiso mz
     deiso_mz = np.load(args.deiso_mz_fl).astype(np.float32)
-    print(deiso_mz.shape)
+    print("deisotoped m/z spectrum has {} bins".format(deiso_mz.shape))
 
     # reduce data to deisotoped mz
     p = ImzMLParser(args.imzML_fl)

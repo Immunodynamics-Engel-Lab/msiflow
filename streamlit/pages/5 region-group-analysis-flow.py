@@ -35,16 +35,16 @@ def get_inputs():
                 "data",
             ),
         )
-    config["annotate"] = st.checkbox(
-        "annotate",
-        value=get_nested_value(config, "annotate"),
-        key="annotate",
-        on_change=update_value,
-        args=(
-            CONFIGWORKFLOW,
+        config["annotate"] = st.checkbox(
             "annotate",
-        ),
-    )
+            value=get_nested_value(config, "annotate"),
+            key="annotate",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotate",
+            ),
+        )
 
     with st.expander("summarize spectra", expanded=True):
         config["summarize_spectra"]["method"] = st.selectbox(

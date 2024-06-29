@@ -33,10 +33,10 @@ if __name__ == '__main__':
     #mzs_above_thr = sc_df[sc_df.columns[0]].to_numpy().astype(np.float32)
     #print(mzs_above_thr.shape)
     mzs_above_thr = np.load(args.ref_mz).astype(np.float32)
-    print(mzs_above_thr)
+    # print(mzs_above_thr)
 
     if args.result_dir == '':
-        print("sc_filtered_" + str(mzs_above_thr.shape[0]))
+        # print("sc_filtered_" + str(mzs_above_thr.shape[0]))
         args.result_dir = os.path.join(os.path.dirname(args.imzML), "sc_filtered_" + str(args.sc_thr) + '_thr' +
                                        str(mzs_above_thr.shape[0]) + '_peaks')
     if not os.path.exists(args.result_dir):

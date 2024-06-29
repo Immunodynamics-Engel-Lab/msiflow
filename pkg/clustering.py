@@ -29,6 +29,7 @@ def hierarchical_clustering_sk(data, connectivity=None):
 
 
 def gaussian_mixture(data, k, start=1):
+    print('Gaussian mixture model...')
     model = GaussianMixture(n_components=k)
     model.fit(data)
     class_labels = model.predict(data)

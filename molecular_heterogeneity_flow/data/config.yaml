@@ -1,6 +1,5 @@
-data: '/mnt/xio/data_publication/ly6g_heterogeneity'
+data: 'data'
 dot_size: 5
-
 umap:
   metric: 'cosine'
   n_neighbors: 3

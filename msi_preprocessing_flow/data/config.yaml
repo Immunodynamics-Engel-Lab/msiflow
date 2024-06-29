@@ -20,7 +20,7 @@ alignment:
   max_shift: 0.01
 
 matrix_removal:
-  clustering: 1
+  clustering: True
   dim_reduction: 'umap'
   n_components: 2
   umap_params:
@@ -33,22 +33,22 @@ matrix_removal:
     min_cluster_size: 10
   kmeans_params:
     n_clusters: 2
-  pixel_removal: 1
-  matrix_subtraction: 0
-  matrix_peak_removal: 1
+  pixel_removal: True
+  matrix_subtraction: False
+  matrix_peak_removal: True
   num_matrix_peaks: 50
   matrix_corr_thr: 0.7
   pixel_perc_thr: 70
-  matrix_postproc: 0
+  matrix_postproc: False
   matrix_mzs: '855.07,861.08,877.05,1066.1,1082.07'
   thr_method: 'yen'
 
 peak_filtering:
   sum: max
-  thr: 50
+  thr: 500
 
 intranorm:
-  method: 'sum'
+  method: 'mfc'
 
 internorm:
   method: 'mfc'
@@ -61,11 +61,9 @@ outlier_detection:
     min_cluster_size: 5000
   cluster_thr: 70
   sample_thr: 70
-  remove_ssc: 1
-
+  remove_ssc: True
 deisotoping:
   tolerance: 0.01
   min_isotopes: 2
   max_isotopes: 6
-  openMS: 0
-
+  openMS: True

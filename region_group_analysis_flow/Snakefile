@@ -35,7 +35,7 @@ def get_input_all(root_dir, classes, file_names, annot, input_list=[]):
         input_list.append(expand(root_dir+ '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot
         + config['statistical_analysis']['infected_grp'] + '_' + config['statistical_analysis']['control_grp']
         + '_regulated_piechart.svg', cl=classes))
-    if config['statistical_analysis']['save_ion_imgs'] == 1:
+    if config['statistical_analysis']['save_ion_imgs']:
         input_list.append(expand(root_dir + '/{cl}/summarized/FC' + str(config['statistical_analysis']['fold_change_thr']) + '/' + annot + 'regulated_ion_imgs/{fl}', cl=classes, fl=file_names))
     if len(classes) > 1 and len(classes) < 4:
         input_list.append(expand(root_dir + '/combined_FC' + str(config['statistical_analysis']['fold_change_thr'])  + '_downregulation/{cl}_specific_molecules.csv', cl=classes))

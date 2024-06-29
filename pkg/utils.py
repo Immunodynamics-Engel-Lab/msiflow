@@ -10,6 +10,13 @@ from scipy import spatial
 from skimage.filters import threshold_otsu, threshold_yen, threshold_isodata, threshold_mean, threshold_minimum, threshold_triangle
 
 
+def booltoint(v):
+    if v == "false" or v == "False" or v == "0":
+        return 0
+    elif v == "true" or v == "True" or v == "1":
+        return 1
+
+
 def apply_threshold(img, thresh_algorithm):
     if thresh_algorithm == 'otsu':
         thresh = threshold_otsu(img)

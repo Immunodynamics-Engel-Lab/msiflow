@@ -89,7 +89,7 @@ if __name__ == '__main__':
         corr_df.at[cl, 'matrix_spear'] = matrix_spear
         corr_df.at[cl, 'tissue_spear'] = tissue_spear
         corr_df.at[cl, 'pixel_perc'] = (np.count_nonzero(img) / np.count_nonzero(tissue_img)) * 100
-    print(corr_df)
+    # print(corr_df)
     corr_df.to_csv(os.path.join(qc_path, sample_name + '_corr.csv'), index=True)
 
     # visualize spearman correlation to matrix cluster
@@ -107,8 +107,8 @@ if __name__ == '__main__':
     # get classes with matrix corr > correlation threshold
     corr_df_filt = corr_df[(corr_df['matrix_spear'] > args.matrix_corr_thr) & (corr_df['pixel_perc'] < args.pixel_perc_thr)]
     matrix_corr_clusters = corr_df_filt.index
-    print(corr_df_filt)
-    print(matrix_corr_clusters)
+    # print(corr_df_filt)
+    # print(matrix_corr_clusters)
 
     # combine matrix image with cluster images with matrix corr > correlation threshold
     extended_matrix_img = np.zeros((p.imzmldict["max count of pixels y"]+1, p.imzmldict["max count of pixels x"]+1), dtype=int)

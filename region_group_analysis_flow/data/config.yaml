@@ -1,4 +1,4 @@
-data: "/mnt/xio/data_publication/region_group_analysis"
+data: "data"
 annotate: True
 
 summarize_spectra:
@@ -8,8 +8,7 @@ statistical_analysis:
   fold_change_thr: 1.0
   infected_grp: 'UPEC'
   control_grp: 'control'
-  save_ion_imgs: 1
+  save_ion_imgs: True
 
 heatmap:
-  row_norm: 1
-
+  row_norm: True

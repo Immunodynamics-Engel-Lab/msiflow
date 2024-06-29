@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-from pkg.utils import get_combined_dataframe_from_files
+from pkg.utils import get_combined_dataframe_from_files, booltoint
 
 
 def find_nearest_val_in_list(val, lst):
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('imzML_dir', type=str, help='directory with imzML files')
     parser.add_argument('-result_dir', type=str, default='', help='directory to store deisotoped mz values')
     parser.add_argument('-tolerance', type=float, default=0.01, help='m/z tolerance in Da')
-    parser.add_argument('-openMS', type=int, default=0, help='set to 1 to use openMS for deisotoping')
+    parser.add_argument('-openMS', type=lambda x: booltoint(x), default=0, help='set to 1 to use openMS for deisotoping')
     parser.add_argument('-min_isotopes', type=int, default=2, help='minimum number of expected isotope peaks')
     parser.add_argument('-max_isotopes', type=int, default=6, help='maximum number of expected isotope peaks')
     parser.add_argument('-decreasing_model', type=bool, default=True, help='set to True to use decreasing model')
@@ -40,7 +40,7 @@ if __name__ == '__main__':
                    and f.endswith('.imzML')]
 
     comb_df = get_combined_dataframe_from_files(args.imzML_dir, imzML_files, multi_index=True)
-    print(comb_df)
+    # print(comb_df)
 
     mean_spec_df = comb_df.mean(axis=0).to_frame().T
     mzs = mean_spec_df.columns.to_numpy()
@@ -73,12 +73,12 @@ if __name__ == '__main__':
         start_intensity_check = 1
         add_up_intensity = False
 
-        print(spectrum.size())
+        # print(spectrum.size())
         Deisotoper.deisotopeAndSingleCharge(spectrum, tolerance, ppm, min_charge, max_charge, keep_only_deisotoped,
                                             min_isotopes, max_isotopes,
                                             make_single_charged, annotate_charge, annotate_iso_peak_count,
                                             use_decreasing_model, start_intensity_check, add_up_intensity)
-        print(spectrum.size())
+        # print(spectrum.size())
 
         spectrum_deiso = MSSpectrum()
         # mz = range(1500, 500, -100)
@@ -143,7 +143,7 @@ if __name__ == '__main__':
         plt.plot(mzs_deiso, ints_deiso, marker="o", ls="", ms=3)
         plt.show()
 
-    print(os.path.join(args.result_dir, 'deiso_mz.npy'))
+    # print(os.path.join(args.result_dir, 'deiso_mz.npy'))
     np.save(os.path.join(args.result_dir, 'deiso_mz.npy'), np.asarray(mzs_deiso))
 
 

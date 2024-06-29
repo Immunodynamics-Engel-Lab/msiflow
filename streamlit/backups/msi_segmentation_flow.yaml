@@ -1,20 +1,20 @@
-data: "data"
+data: 'data'
 
 general:
   multi_sample: False
   dot_size: 1
 
 dim_reduction:
-  method: "umap"
+  method: 'umap'
   n_components: 2
 
 umap:
-  metric: "cosine"
+  metric: 'cosine'
   n_neighbors: 15
   min_dist: 0.0
 
 clustering:
-  method: "k-means"
+  method: 'k-means'
   n_clusters: 3
 
 hdbscan:

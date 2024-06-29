@@ -1,4 +1,4 @@
-data: '/Users/philippaspangenberg/Desktop/msiflows_testdata/msi_segmentation'
+data: 'data'
 
 general:
   multi_sample: False

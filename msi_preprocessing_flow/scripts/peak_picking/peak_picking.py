@@ -80,7 +80,7 @@ def peak_picking(path, outdir, snr_thr=3, window_size=11, order=3, smooth=1, qua
         # perform peak picking based on a predefined lower quantile
         if quant != 0:
             low_perc = np.percentile(y, quant)
-            print(low_perc)
+            # print(low_perc)
             x_peaks = x[y > low_perc]
             y_peaks = y[y > low_perc]
         else:

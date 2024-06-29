@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('-sample_thr', type=float, default=50,
                         help='sample pixel percentage which must be covered by sample-specific cluster pixels to be considered a outlier sample, default=50')
     parser.add_argument('-remove_sample_outliers', type=int, default=0, help='set to 1 to remove sample outliers, default=0')
-    parser.add_argument('-remove_ssc', type=int, default=1, help='set to 1 to remove SSC, default=1')
+    parser.add_argument('-remove_ssc', type=lambda x: utils.booltoint(x), default=1, help='set to True to remove SSC, default=1')
     args = parser.parse_args()
 
     imzML_files = [f.split('.')[0] for f in os.listdir(args.imzML_dir) if f.endswith('.imzML')]
@@ -105,8 +105,8 @@ if __name__ == '__main__':
     plt.savefig(os.path.join(qc_dir, 'barplot.svg'))
 
     # only save non-outlier samples
-    print(df_px_perc_sum)
-    print(df_result)
+    # print(df_px_perc_sum)
+    # print(df_result)
     sample_outliers = df_px_perc_sum[df_px_perc_sum > args.sample_thr].index.to_list()
     print('identified sample outliers:', sample_outliers)
 
@@ -122,26 +122,26 @@ if __name__ == '__main__':
     if args.remove_ssc:
         # remove outlier samples from result file
         df_result = df_result[~df_result['sample'].isin(sample_outliers)]
-        print(df_result)
+        # print(df_result)
 
         # create dict with sample: [cluster_1, ... , cluster_n]
         sample_outlier_cluster_dict = df_result.groupby('sample')['cluster'].apply(list).to_dict()
-        print(sample_outlier_cluster_dict)
+        # print(sample_outlier_cluster_dict)
 
         # remove cluster pixels from each imzML file containing outlier clusters
         for sample in sample_outlier_cluster_dict:
             # get dataframe of sample and clusters
             cluster_fl_df = df[df['sample'] == sample]
             cluster_fl_df = cluster_fl_df[cluster_fl_df['label'].isin(sample_outlier_cluster_dict[sample])]
-            print(cluster_fl_df)
+            # print(cluster_fl_df)
             cluster_fl_df = cluster_fl_df[['x', 'y']]
-            print(cluster_fl_df)
+            # print(cluster_fl_df)
 
             # remove cluster pixels from fl_df
             fl_df = utils.get_dataframe_from_imzML(os.path.join(args.imzML_dir, sample + '.imzML'), multi_index=False)
             df_merge = pd.merge(fl_df, cluster_fl_df, how='outer', on=['x', 'y'], indicator=True)
             pixel_removed_df = fl_df.loc[df_merge['_merge'] == 'left_only']
-            print(pixel_removed_df)
+            # print(pixel_removed_df)
             print('no. pixels before pixel removal: ', fl_df.shape[0])
             print('no. pixels after pixel removal: ', pixel_removed_df.shape[0])
 

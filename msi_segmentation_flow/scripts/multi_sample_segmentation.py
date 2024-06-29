@@ -144,7 +144,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     df_combined = utils.get_combined_dataframe_from_files(imzml_dir, file_list, groups=True)
     df_meta_data = df_combined.iloc[:, :4]
     spec_data = df_combined.iloc[:,4:].to_numpy()
-    print(df_combined)
+    # print(df_combined)
     if preembedding and spec_data.shape[1] > 1000:
         print("TSVD embedding started at {}".format(datetime.now()))
         if preembedding_model != '':
@@ -174,7 +174,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     print('{} started at {}'.format(clustering, datetime.now()))
     if clustering == 'hdbscan':
         labels = HDBSCAN_clustering(data=embedding, min_samples=min_samples, min_cluster_size=min_clusters, start=0)
-        print("labels=", np.unique(labels))
+        # print("labels=", np.unique(labels))
     elif clustering == 'hierarchical':
         labels = hierarchical_clustering(data=embedding, k=n_clusters)
     elif clustering == 'gaussian_mixture':
@@ -185,7 +185,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     print('{} finished at {}'.format(clustering, datetime.now()))
     # extract RGBA color for labels
     colors = []
-    print(np.unique(labels))
+    # print(np.unique(labels))
 
     # transdict = {-1: -1, 0: 0, 1: 0, 2: 1, 3: 0, 4: 2, 5: 2, 6: 3, 7: 2}
     # labels = [transdict[letter] for letter in labels]
@@ -231,7 +231,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     is_labeled = df_result['label'] != -1
     df_labeled_result = df_result[is_labeled]
 
-    print(np.unique(df_result['label_color'].to_numpy()))
+    # print(np.unique(df_result['label_color'].to_numpy()))
 
     result_groups_dict = {}
     groups = df_combined['group'].unique()
@@ -313,8 +313,8 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     # cluster scatter plot
     # create color_dict for scatter plot
     df_label_info = df_result.drop_duplicates(subset=['label'])
-    print(df_result)
-    print(df_label_info)
+    # print(df_result)
+    # print(df_label_info)
     color_dict = {}
     for ind in df_label_info.index:
         color_dict[df_label_info['label'][ind]] = df_label_info['label_color'][ind]
@@ -322,13 +322,13 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
         leg = False
     else:
         leg = 'full'
-    print(color_dict)
+    # print(color_dict)
     # sns.scatterplot(x=col_1, y=col_2, hue='label', data=df_labeled_result, legend=leg, linewidth=0,
     #                 palette=color_dict, s=dot_size, cmap=cmap)
     # sns.scatterplot(x=col_1, y=col_2, hue='label', data=df_result, legend=leg, linewidth=0,
     #                 palette=color_dict, s=dot_size, cmap=cmap)
-    print(df_result[~is_labeled])
-    print(df_result[is_labeled])
+    # print(df_result[~is_labeled])
+    # print(df_result[is_labeled])
     sns.scatterplot(x=col_1, y=col_2, data=df_result[~is_labeled], legend=leg, linewidth=0,
                     s=dot_size, c=df_result[~is_labeled]['label_color'])
     sns.scatterplot(x=col_1, y=col_2, data=df_result[is_labeled], legend=leg, linewidth=0,
@@ -345,7 +345,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     # individual scatterplot for each group
     for group in result_groups_dict.keys():
         df_group = result_groups_dict.get(group)
-        print(df_group)
+        # print(df_group)
         sns.scatterplot(x=col_1, y=col_2, data=df_group[~is_labeled], legend=leg, linewidth=0,
                         s=dot_size, c=df_group[~is_labeled]['label_color'])
         sns.scatterplot(x=col_1, y=col_2, data=df_group[is_labeled], legend=leg, linewidth=0,

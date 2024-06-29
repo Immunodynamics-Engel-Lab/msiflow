@@ -41,6 +41,8 @@ if config['matrix_removal']['matrix_mzs']:
     ruleorder: get_matrix_img_list > single_sample_segmentation
 else:
     ruleorder: single_sample_segmentation > get_matrix_img_list
+if config['matrix_removal']['clustering']:
+    ruleorder: single_sample_segmentation > get_matrix_img_list
 
 
 def get_input(out_dir, files, input_list=[]):
@@ -279,7 +281,7 @@ rule median_spectrum:
     input: expand(get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/{fl}.imzML', fl=FILES)
     output: get_path_intranorm() + '/intranorm_' + config['intranorm']['method'] + '/median_spectrum.npy'
     # benchmark: repeat(BENCHMARK_PATH + "/median_spectrum.benchmark.txt", BM_REPEAT)
-    shell: 'python ' + SCRIPT_PATH + '/internorm/get_median_overall_spectrum.py \'' \
+    shell: 'python ' + SCRIPT_PATH + '/internorm/get_median_overall_spectrum.py '
             + get_path_intranorm() + '/intranorm_' + config['intranorm']['method']  + ' {output:q}'
 
 rule internorm_mfc:
@@ -304,8 +306,8 @@ rule multi_sample_segmentation:
     output: umap_data = get_io_path_multi_sample_segmentation()[1] + '/umap_data.csv'
     # benchmark: repeat(BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/multi_sample_segmentation.py ' + get_io_path_multi_sample_segmentation()[0]
-            + '-result_dir \'' + get_io_path_multi_sample_segmentation()[1]
-            + '\' -n_neighbors {config[outlier_detection][umap_params][n_neighbors]}'
+            + ' -result_dir ' + get_io_path_multi_sample_segmentation()[1]
+            + ' -n_neighbors {config[outlier_detection][umap_params][n_neighbors]}'
             ' -min_cluster_size {config[outlier_detection][hdbscan_params][min_cluster_size]}'
             ' -min_samples {config[outlier_detection][hdbscan_params][min_samples]}'
 
@@ -314,8 +316,8 @@ rule outlier_detection:
             imzML_files = expand(get_io_path_outlier_detection()[0] + '/{fl}.imzML', fl=FILES)
     output: expand(get_io_path_outlier_detection()[1] + '/{fl}.imzML', fl=FILES)
     # benchmark: repeat(BENCHMARK_PATH + "/outlier_detection.benchmark.txt", BM_REPEAT)
-    shell: 'python ' + SCRIPT_PATH + '/outlier_detection/umap_outlier_detection.py {input:q} '
-            + get_io_path_outlier_detection()[0] + '-result_dir \'' + get_io_path_outlier_detection()[1]
+    shell: 'python ' + SCRIPT_PATH + '/outlier_detection/umap_outlier_detection.py {input.umap_data} '
+            + get_io_path_outlier_detection()[0] + ' -result_dir \'' + get_io_path_outlier_detection()[1]
             + '\' -cluster_thr {config[outlier_detection][cluster_thr]} -sample_thr {config[outlier_detection][sample_thr]}'
               ' -remove_ssc {config[outlier_detection][remove_ssc]}'
 

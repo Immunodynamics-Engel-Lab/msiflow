@@ -22,10 +22,10 @@ if __name__ == '__main__':
     parser.add_argument('imzML_fl', type=str, help='imzML file')
     #parser.add_argument('matrix_pixels', type=str, help='csv file with matrix pixel coordinates')
     parser.add_argument('matrix_img', type=str, help='binary matrix image')
-    parser.add_argument('-proc_matrix_img', type=int, default=1, help='set to 1 to postprocess binary matrix image, default=1')
-    parser.add_argument('-pixel_removal', type=int, default=1, help='set to 1 to remove matrix/non-tissue pixels, default=1')
-    parser.add_argument('-matrix_subtraction', type=int, default=0, help='set to 1 to subtract matrix signals, default=0')
-    parser.add_argument('-matrix_peaks_removal', type=int, default=0, help='set to 1 to remove high matrix peaks, default=0')
+    parser.add_argument('-proc_matrix_img', type=lambda x: utils.booltoint(x), default=1, help='set to True to postprocess binary matrix image, default=1')
+    parser.add_argument('-pixel_removal', type=lambda x: utils.booltoint(x), default=1, help='set to True to remove matrix/non-tissue pixels, default=1')
+    parser.add_argument('-matrix_subtraction', type=lambda x: utils.booltoint(x), default=0, help='set to True to subtract matrix signals, default=0')
+    parser.add_argument('-matrix_peaks_removal', type=lambda x: utils.booltoint(x), default=0, help='set to True to remove high matrix peaks, default=0')
     parser.add_argument('-num_matrix_peaks', type=int, default=20, help='number of top peaks which should be removed, default=20')
     parser.add_argument('-result_dir', type=str, default='', help='directory to store result, default=\'\' will save results in matrix_removal directory')
     parser.add_argument('-qc', type=int, default=1, help='set to 1 for qc output, default=1')
@@ -116,7 +116,7 @@ if __name__ == '__main__':
             df_sub = df.iloc[:, 2:]
             df_sub.loc[:, matrix_mz_peaks] = 0
             #df_sub = df.drop(columns=matrix_mz_peaks.tolist())
-        print(df_sub)
+        # print(df_sub)
 
         if args.plot == 1 or args.qc == 1:
             sum_spec_df = utils.get_summarized_spectrum(df, method='mean')
@@ -139,8 +139,8 @@ if __name__ == '__main__':
             plt.close()
     else:
         df_sub = df.iloc[:, 2:]
-    print(df_sub)
-    print(df)
+    # print(df_sub)
+    # print(df)
 
     # write matrix subtracted data
     p = ImzMLParser(args.imzML_fl)

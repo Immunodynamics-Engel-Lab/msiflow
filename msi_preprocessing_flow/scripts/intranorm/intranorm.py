@@ -63,7 +63,7 @@ if __name__ == '__main__':
     fl_name = os.path.basename(args.imzML_fl).split('.')[0]
     p = ImzMLParser(args.imzML_fl)
     df = utils.get_dataframe_from_imzML(args.imzML_fl, multi_index=True)
-    print(df)
+    # print(df)
 
     # ignore mz features and spectra with all zeros or nans
     df = df.replace(0, np.nan)
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     # apply scaling factor
     df = df.replace(np.nan, 0)
     df_norm = df.divide(scfacs, axis='rows')
-    print(df_norm)
+    # print(df_norm)
 
     # quality control
     if args.qc == 1:

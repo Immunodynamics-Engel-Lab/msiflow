@@ -51,6 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('-n_folds', type=int, default=0, help='number of folds for cross validation')
     parser.add_argument('-pos_class', type=str, default='pos', help='if binary classification, set positive class label')
     parser.add_argument('-plot', type=bool, default=False, help='set to True for plotting')
+    parser.add_argument('-verbose', type=bool, default=False, help='set to True for verbose output')
     args = parser.parse_args()
 
     if args.result_dir == '':
@@ -74,18 +75,19 @@ if __name__ == '__main__':
     #classes = set([f.split('.')[0].split('_')[0] + '_' + f.split('.')[0].split('_')[1] for f in bin_imgs])
     class_labels_dict = {k: i for k, i in enumerate(classes, 0)}
 
-    print('------------------------------')
-    print('imzML_files=', imzML_files)
-    print('file_names=', file_names)
-    print('bin_imgs=', bin_imgs)
-    print('samples=', samples)
-    print("classes=", classes)
-    print("class_labels_dict=", class_labels_dict)
+    if args.verbose:
+        print('------------------------------')
+        print('imzML_files=', imzML_files)
+        print('file_names=', file_names)
+        print('bin_imgs=', bin_imgs)
+        print('samples=', samples)
+        print("classes=", classes)
+        print("class_labels_dict=", class_labels_dict)
 
     df = utils.get_combined_dataframe_from_files(args.imzML_dir, imzML_files, multi_index=True)
     #df.columns = np.round(df.columns.to_numpy(), 4)
     df['label'] = [1000] * df.shape[0]
-    print(df)
+    # print(df)
 
     # add labels to dataframe
     print('adding class labels to dataframe...')
@@ -107,15 +109,16 @@ if __name__ == '__main__':
 
     #y = df['label'].to_numpy()
     y = df['label']
-    print("labels=", np.unique(y.to_numpy()))
     _, idx = np.unique(y.to_numpy(), return_index=True)
     class_names = y.to_numpy()[np.sort(idx)]
-    print("class_names=", class_names)
     #X = df.iloc[:, :-1].to_numpy()
     X = df.iloc[:, :-1]
 
-    print("y=", y)
-    print("X=", X)
+    if args.verbose:
+        print("labels=", np.unique(y.to_numpy()))
+        print("class_names=", class_names)
+        print("y=", y)
+        print("X=", X)
 
     # select model
     if args.model == 'RandomForest':
@@ -176,7 +179,7 @@ if __name__ == '__main__':
             pickle.dump(classifier, open(os.path.join(args.result_dir, args.model + '.json'), 'wb'))
         else:
             classifier = pickle.load(open(args.model_file, 'rb'))
-        print(classifier)
+        # print(classifier)
 
         # extract mean feature importances
         print('------------------------------')
@@ -233,7 +236,7 @@ if __name__ == '__main__':
 
             # shap plot for each class
             for i, cl in enumerate(model.classes_):
-                print(class_labels_dict[cl])
+                # print(class_labels_dict[cl])
                 shap.summary_plot(shap_values[i], X.values, feature_names=X.columns, show=False)
                 plt.savefig(
                     os.path.join(args.result_dir, args.model + '_shap_summary_' + class_labels_dict[cl] + '.svg'))
@@ -308,7 +311,8 @@ if __name__ == '__main__':
             # Compute micro-average ROC curve and ROC area
             fpr["micro"], tpr["micro"], _ = roc_curve(y_bin.ravel(), y_score.ravel())
             roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-            print(f"Micro-averaged One-vs-Rest ROC AUC score:\n{roc_auc['micro']:.2f}")
+            if args.verbose:
+                print(f"Micro-averaged One-vs-Rest ROC AUC score:\n{roc_auc['micro']:.2f}")
 
             # Compute macro-average ROC curve and ROC area
             for i in range(n_classes):
@@ -324,7 +328,8 @@ if __name__ == '__main__':
             fpr["macro"] = fpr_grid
             tpr["macro"] = mean_tpr
             roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
-            print(f"Macro-averaged One-vs-Rest ROC AUC score:\n{roc_auc['macro']:.2f}")
+            if args.verbose:
+                print(f"Macro-averaged One-vs-Rest ROC AUC score:\n{roc_auc['macro']:.2f}")
 
             plt.plot(
                 fpr["micro"],

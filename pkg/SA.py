@@ -200,9 +200,9 @@ def SA(msi_df, r=3, q=20, k=10, connectivity=None, seed_val=0, cluster_mode='kme
     Fastmap(q)
 
     np.set_printoptions(suppress=True)
-    print(X)
-    print(PA)
-    print(X.shape)
+    # print(X)
+    # print(PA)
+    # print(X.shape)
 
     #######################
     # 4. Cluster the projected mapped spectra into k groups using k-means

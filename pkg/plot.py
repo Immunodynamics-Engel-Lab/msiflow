@@ -146,9 +146,9 @@ def construct_spot_image(imzML_file, vals, output_file='', cmap='Spectral'):
     """
     p = ImzMLParser(imzML_file)
 
-    print("vals=",vals)
-    print("vals.shape=", vals.shape)
-    print("vals.ndim=", vals.ndim)
+    # print("vals=",vals)
+    # print("vals.shape=", vals.shape)
+    # print("vals.ndim=", vals.ndim)
 
     if vals.ndim == 2:  # 3D RGB image
         im = np.zeros((p.imzmldict["max count of pixels y"]+1, p.imzmldict["max count of pixels x"]+1, 3))

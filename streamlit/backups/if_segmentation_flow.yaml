@@ -1,7 +1,7 @@
 data: "data"
 
 if_segmentation:
-  threshold_algorithm: "otsu"
+  threshold_algorithm: 'otsu'
   gauss_sigma: 1
   min_size: 10
   img_channels_to_segment: 1

@@ -31,14 +31,14 @@ if __name__ == '__main__':
     #pyx = (p.imzmldict["max count of pixels y"], p.imzmldict["max count of pixels x"])
     df = utils.get_dataframe_from_imzML(args.imzML_fl, multi_index=False)
     mzs = df.columns[2:].to_numpy()
-    print(mzs.shape)
-    print(df)
+    # print(mzs.shape)
+    # print(df)
 
     df = df[(df['x'] >= args.x_min) & (df['x'] <= args.x_max) & (df['y'] >= args.y_min) & (df['y'] <= args.y_max)]
     df['x'] = df['x'] - args.x_min
     df['y'] = df['y'] - args.y_min
-    print(df)
-    print(df.columns[2:].to_numpy().shape)
+    # print(df)
+    # print(df.columns[2:].to_numpy().shape)
 
     p = ImzMLParser(args.imzML_fl)
     with ImzMLWriter(os.path.join(args.result_dir, os.path.basename(args.imzML_fl))) as writer:

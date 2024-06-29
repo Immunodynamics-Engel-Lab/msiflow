@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     p = ImzMLParser(args.imzML_fl)
     df = utils.get_dataframe_from_imzML(args.imzML_fl, multi_index=True)
-    print(df)
+    # print(df)
 
     # ignore mz features and spectra with all zeros or nans
     df = df.replace(0, np.nan)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # apply scaling factor
     df = df.replace(np.nan, 0)
     df_norm = df.divide(scfac)
-    print(scfac)
+    # print(scfac)
 
     with ImzMLWriter(os.path.join(args.result_dir, os.path.basename(args.imzML_fl))) as writer:
         for index, row in df_norm.iterrows():

@@ -1,4 +1,4 @@
-data: "/mnt/xio/data_publication/if_segmentation"
+data: "data"
 
 if_segmentation:
   threshold_algorithm: 'otsu'

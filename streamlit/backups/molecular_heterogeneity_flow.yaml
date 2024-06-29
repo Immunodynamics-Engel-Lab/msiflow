@@ -1,8 +1,7 @@
-data: "data"
+data: 'data'
 dot_size: 5
-
 umap:
-  metric: "cosine"
+  metric: 'cosine'
   n_neighbors: 3
   min_dist: 0.0
   use_model: False

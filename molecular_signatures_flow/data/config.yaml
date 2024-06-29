@@ -1,4 +1,4 @@
-data: "/mnt/xio/data_publication/ly6g_heterogeneity_signatures"
+data: "data"
 
 classification:
   model: "XGBoost"

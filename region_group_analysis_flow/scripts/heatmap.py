@@ -8,13 +8,17 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 import numpy as np
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+from pkg import utils
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plots heatmap')
     parser.add_argument('input', type=str, help='csv file with m/z and intensities')
     parser.add_argument('output', type=str, help='output file with heatmap')
     parser.add_argument('-cmap', type=str, default='bwr', help='colormap')
-    parser.add_argument('-row_norm', type=int, default=1, help='1=rowwise normalisation, 0=no normalisation')
+    parser.add_argument('-row_norm', type=lambda x: utils.booltoint(x), default=True,
+                        help='True=rowwise normalisation, False=no normalisation')
     parser.add_argument('-plot', type=bool, default=False, help='set to True for plotting')
     args = parser.parse_args()
 
@@ -46,10 +50,10 @@ if __name__ == '__main__':
         if args.row_norm == 1:
             g = sns.clustermap(df_ints, col_cluster=True, row_cluster=True, cmap=args.cmap, standard_scale=0, square=True,
                                metric='euclidean', method='complete', yticklabels=1, xticklabels=1)
-            g.ax_heatmap.set_aspect('equal')
         else:
-            g = sns.clustermap(df_ints.T, col_cluster=True, row_cluster=True, cmap=args.cmap, standard_scale=None,
+            g = sns.clustermap(df_ints, col_cluster=True, row_cluster=True, cmap=args.cmap, standard_scale=None,
                                metric='euclidean', method='complete', yticklabels=1, xticklabels=1)
+        g.ax_heatmap.set_aspect('equal')
         #g.ax_row_dendrogram.set_visible(True)
         # g.ax_cbar.set_visible(False)
         g.ax_heatmap.tick_params(labelsize=6)

@@ -222,8 +222,8 @@ def segmentation(df, general_dict, cluster_dict):
             cluster_nos_without_zero = cluster_nos
             if 0 in cluster_nos:
                 cluster_nos_without_zero.remove(0)
-            print("clusters:")
-            print(cluster_nos)
+            # print("clusters:")
+            # print(cluster_nos)
             # print(cluster_nos_without_zero)
             df_pixel_calc = pd.DataFrame(index=cluster_nos_without_zero, columns=['border pixels (%)', 'total pixels (%)'])
             for class_label in cluster_nos_without_zero:
@@ -259,10 +259,10 @@ def segmentation(df, general_dict, cluster_dict):
             df_pixel_calc = df_pixel_calc[df_pixel_calc['total pixels (%)'] < matrix_pixel_perc_thr]
             # print(df_pixel_calc)
             idx_max_border_pts = np.argmax(df_pixel_calc['border pixels (%)'].to_numpy())
-            print('index with max border pts=', idx_max_border_pts)
+            # print('index with max border pts=', idx_max_border_pts)
             idx = df_pixel_calc.index.to_numpy()
             matrix_class = idx[idx_max_border_pts]
-            print('matrix class = ', matrix_class)
+            # print('matrix class = ', matrix_class)
 
             # save dataframe with matrix pixels
             df_result = df[df['class'] == matrix_class].reset_index(drop=True)

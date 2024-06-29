@@ -2,13 +2,13 @@ data: "data"
 annotate: True
 
 summarize_spectra:
-  method: "mean"
+  method: 'mean'
 
 statistical_analysis:
   fold_change_thr: 1.0
-  infected_grp: "UPEC"
-  control_grp: "control"
-  save_ion_imgs: 1
+  infected_grp: 'UPEC'
+  control_grp: 'control'
+  save_ion_imgs: True
 
 heatmap:
-  row_norm: 1
+  row_norm: True

@@ -1,12 +1,11 @@
-data: "/mnt/xio/UPEC_11_outlier_test"
-
-classification:
-  model: "XGBoost"
-  img_channels: ""
-  multiclass: False
-  class_balancing_method: "standard"
-  num_top_feat: 10
-  save_ion_imgs: True
-  save_umap_imgs: False
-  n_folds: 0
-  annotate: False
+data: /mnt/xio/msiFlow_data/region_group_analysis
+annotate: true
+summarize_spectra:
+  method: mean
+statistical_analysis:
+  fold_change_thr: 1.0
+  infected_grp: UPEC
+  control_grp: control
+  save_ion_imgs: false
+heatmap:
+  row_norm: false

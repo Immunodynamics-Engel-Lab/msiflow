@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     res_df = pd.DataFrame(index=mzs, columns=['Spatial coherence'], data=sc)
     res_df.to_csv(os.path.join(args.result_dir, sample_num + '_sc.csv'))
-    print(res_df)
+    # print(res_df)
 
     # distribution of spatial coherence of all m/z
     sc = np.asarray(sc)
@@ -232,10 +232,10 @@ if __name__ == '__main__':
         perc80 = np.percentile(sc, 99.9)
         least20_mzs = mzs[sc <= perc20]
         top20_mzs = mzs[sc >= perc80]
-        print(perc20)
-        print(perc80)
-        print(least20_mzs)
-        print(top20_mzs)
+        # print(perc20)
+        # print(perc80)
+        # print(least20_mzs)
+        # print(top20_mzs)
 
         bottom_dir = os.path.join(args.result_dir, 'bottomSC')
         top_dir = os.path.join(args.result_dir, 'topSC')
@@ -243,8 +243,8 @@ if __name__ == '__main__':
             os.mkdir(bottom_dir)
         if not os.path.exists(top_dir):
             os.mkdir(top_dir)
-        print(bottom_dir)
-        print(top_dir)
+        # print(bottom_dir)
+        # print(top_dir)
         with multiprocessing.Pool() as pool:
             # call the function for each item in parallel
             pool.map(partial(plot_ion_image, input_file=args.imzML, output_file='', tol=args.tol, CLAHE=args.CLAHE,

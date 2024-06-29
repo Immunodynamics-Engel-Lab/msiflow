@@ -1,10 +1,10 @@
-data: "/Users/philippaspangenberg/Desktop/msiflows_testdata/msi_if_registration"
+data: "data"
 
 if_preprocessing:
-  radius: 0
-  sigma: 0
+  radius: 100
+  sigma: 1
   lower_perc: 0.0
-  upper_perc: 0.0
+  upper_perc: 99.9
 
 registration:
   af_chan: 2
