@@ -14,9 +14,12 @@ After all steps an endogenous/tissue-origin mono-isotopic peak list is generated
 [here](https://github.com/Immunodynamics-Engel-Lab/msiflow/blob/main/msi_preprocessing_flow/dag.pdf).
 
 ## Installation
-please see installation instructions [here](https://github.com/Immunodynamics-Engel-Lab/msiflow).
+Please see installation instructions [here](https://github.com/Immunodynamics-Engel-Lab/msiflow).
 
 ## Run
+Please see [here](https://github.com/Immunodynamics-Engel-Lab/msiflow) how to run the **graphical-user interface** of msiFlow.
+The following provides instructions on how to run the workflow via the **command-line interface**.
+
 To run this workflow via **Docker** follow these instructions:
   - start Docker
   - in a terminal run `docker run -v <path-to-data-and-config>:/home/user/msiflow/data -e 'WORKFLOW=msi_preprocessing_flow' -e 'CORES=<number-of-cores>' phispa1812/msiflow`
@@ -36,10 +39,10 @@ name your files in your data folder for successful completion of msiFlow.
 #### Data folder
 Your data folder must contain the following directories and files:
 - directory named *msi* containing imzML files or .d directories named *group_sampleno.imzML/.d*
-- *config.yaml* when using the **Docker** version of msiFlow
+- *config.yaml* when using the **Docker** version of msiFlow with the **command-line interface** 
 
 #### Configuration file
-You must provide a **configuration file** named *config.yaml* to run this workflow. All parameters used by the workflow are defined in
+When using the **command-line interface** you must provide a **configuration file** named *config.yaml* to run this workflow. All parameters used by the workflow are defined in
 this configuration file. See the [wiki]() for a description of all parameters. An example configuration file can be
 found [here](https://github.com/Immunodynamics-Engel-Lab/msiflow/blob/main/msi_segmentation_flow/data/config.yaml).
 

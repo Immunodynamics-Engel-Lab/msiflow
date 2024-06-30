@@ -1,11 +1,1 @@
-data: /mnt/xio/msiFlow_data/region_group_analysis
-annotate: true
-summarize_spectra:
-  method: mean
-statistical_analysis:
-  fold_change_thr: 1.0
-  infected_grp: UPEC
-  control_grp: control
-  save_ion_imgs: false
-heatmap:
-  row_norm: false
+data: 'data'
