@@ -132,4 +132,4 @@ data
                     |   top_features.svg
 ```
 ## Example data
-Example data to run this workflow can be found on [Zenodo]().
+Example data to run this workflow can be found on [Zenodo](https://doi.org/10.5281/zenodo.11913042) in *ly6g_molecular_signatures.zip* or *ly6g_heterogeneity_signatures.zip*.

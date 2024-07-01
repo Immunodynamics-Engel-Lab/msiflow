@@ -81,6 +81,14 @@ Each workflow directory contains a **README** with detailed information on
 - where to find **example data** to test the workflow
 
 ## Example data
-Generally all example data to test the workflows can be found on [Zenodo]().
+Generally all example data to test the workflows can be found on [Zenodo](https://doi.org/10.5281/zenodo.11913042).
 
+## Correspondence
+[**Prof. Dr. Daniel R. Engel**](mailto:danielrobert.engel@uk-essen.de): Department of Immunodynamics, Institute of Experimental Immunology and Imaging, University Hospital Essen, Essen, Germany
 
+http://www.immunodynamics.de
+
+## References
+1. Veselkov, K., Sleeman, J., Claude, E. et al. BASIS: High-performance bioinformatics platform for processing of large-scale mass spectrometry imaging data in chemically augmented histology. Sci Rep 8, 4053 (2018). https://doi.org/10.1038/s41598-018-22499-z
+2. Grélard, F., Legland, D., Fanuel, M. et al. Esmraldi: efficient methods for the fusion of mass spectrometry and magnetic resonance images. BMC Bioinformatics 22, 56 (2021). https://doi.org/10.1186/s12859-020-03954-z
+3. imzy. imzy: A new reader/writer interface to imzML and other imaging mass spectrometry formats. GitHub repository (2022). https://github.com/imzy/imzy

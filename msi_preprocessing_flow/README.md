@@ -141,4 +141,4 @@ data
 ```
 
 ## Example data
-Example data to run this workflow can be found on [Zenodo]().
+Example data to run this workflow can be found on [Zenodo](https://doi.org/10.5281/zenodo.11913042) in *maldi-2-group-sampleno.zip* containing raw MALDI-2 MSI data of bladder sections.
