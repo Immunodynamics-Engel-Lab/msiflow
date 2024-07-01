@@ -6,6 +6,25 @@
 automated workflows for reproducible and scalable multimodal mass spectrometry imaging and immunofluorescence microscopy data processing and analysis
 </h2>
 
+[![License](https://img.shields.io/github/license/Immunodynamics-Engel-Lab/msiflow?color=green&style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow/LICENSE)
+&nbsp;
+![GitHub top language](https://img.shields.io/github/languages/top/Immunodynamics-Engel-Lab/msiflow)
+&nbsp;
+[![Latest Release](https://img.shields.io/github/v/release/Immunodynamics-Engel-Lab/msiflow?style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow)
+&nbsp;
+[![Release Date](https://img.shields.io/github/release-date/Immunodynamics-Engel-Lab/msiflow?style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow/releases)
+&nbsp;
+[![Issues](https://img.shields.io/github/issues/Immunodynamics-Engel-Lab/msiflow?style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow/issues)
+&nbsp;
+[![Pull Requests](https://img.shields.io/github/issues-pr/Immunodynamics-Engel-Lab/msiflow?style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow/pulls)
+&nbsp;
+[![Commits](https://img.shields.io/github/commit-activity/m/Immunodynamics-Engel-Lab/msiflow?style=flat)](https://github.com/Immunodynamics-Engel-Lab/msiflow)
+&nbsp;
+[![Docker Downloads](https://img.shields.io/docker/pulls/phispa1812/msiflow_gui?style=flat)](https://hub.docker.com/r/phispa1812/msiflow_gui)
+&nbsp;
+[![GitHub Repo stars](https://img.shields.io/github/stars/Immunodynamics-Engel-Lab/msiflow)](https://github.com/Immunodynamics-Engel-Lab/msiflow) 
+&nbsp;
+
 msiFlow contains 7 snakemake workflows:
 
 | task | description | workflow
@@ -18,9 +37,9 @@ msiFlow contains 7 snakemake workflows:
 | analysis & visualisation | molecular signatures of ROIs by ML classification | `molecular_signatures_flow` |
 | analysis & visualisation | molecular heterogeneity in ROIs by UMAP-based clustering | `molecular_heterogeneity_flow` |
 
-msiFlow can be run via **Docker** or **locally** by using a **graphical user interface** (gui) or the **command-line interface** (cli):
+msiFlow can be run via **Docker** or **locally** by using a graphical user interface (gui) or the command-line interface (cli):
 1. The **Docker version** of msiFlow is intended for **easy-to-use** execution and does not require package installations.
-2. The **local version** of msiFlow is intended for **development**. 
+2. The **local version** of msiFlow is intended for **development**.
 
 ## Installation
 
@@ -76,13 +95,14 @@ Each workflow directory contains a **README** with detailed information on
 - how to structure and name your **input data** files for successful execution of msiFlow
 - how to set the **configuration** parameters 
   - example *config.yaml* is provided in each directory
-  - a description of all parameters is provided in the [wiki]()
+  - a description of all parameters is provided in the [wiki](https://github.com/Immunodynamics-Engel-Lab/msiflow/wiki)
 - where and what **output** files are generated
 - where to find **example data** to test the workflow
 
 ## Example data
-Generally all example data to test the workflows can be found on [Zenodo](https://doi.org/10.5281/zenodo.11913042).
+Generally all example data to test the workflows can be found on Zenodo:
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11913042.svg)](https://doi.org/10.5281/zenodo.11913042)
 ## Correspondence
 [**Prof. Dr. Daniel R. Engel**](mailto:danielrobert.engel@uk-essen.de): Department of Immunodynamics, Institute of Experimental Immunology and Imaging, University Hospital Essen, Essen, Germany
 
@@ -91,4 +111,4 @@ http://www.immunodynamics.de
 ## References
 1. Veselkov, K., Sleeman, J., Claude, E. et al. BASIS: High-performance bioinformatics platform for processing of large-scale mass spectrometry imaging data in chemically augmented histology. Sci Rep 8, 4053 (2018). https://doi.org/10.1038/s41598-018-22499-z
 2. Grélard, F., Legland, D., Fanuel, M. et al. Esmraldi: efficient methods for the fusion of mass spectrometry and magnetic resonance images. BMC Bioinformatics 22, 56 (2021). https://doi.org/10.1186/s12859-020-03954-z
-3. imzy. imzy: A new reader/writer interface to imzML and other imaging mass spectrometry formats. GitHub repository (2022). https://github.com/imzy/imzy
+3. imzy. imzy: A new reader/writer interface to imzML and other imaging mass spectrometry formats. GitHub repository (2022). https://github.com/vandeplaslab/imzy
