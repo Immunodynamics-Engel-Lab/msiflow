@@ -29,18 +29,18 @@ matrix_removal:
     min_dist: 0.0
   cluster_algorithm: 'hdbscan'
   hdbscan_params:
-    min_samples: 5
-    min_cluster_size: 10
+    min_samples: 50
+    min_cluster_size: 100
   kmeans_params:
     n_clusters: 2
   pixel_removal: True
   matrix_subtraction: False
-  matrix_peak_removal: True
+  matrix_peak_removal: False
   num_matrix_peaks: 50
   matrix_corr_thr: 0.7
-  pixel_perc_thr: 70
+  pixel_perc_thr: 50
   matrix_postproc: False
-  matrix_mzs: '855.07,861.08,877.05,1066.1,1082.07'
+  matrix_mzs: ''
   thr_method: 'yen'
 
 peak_filtering:

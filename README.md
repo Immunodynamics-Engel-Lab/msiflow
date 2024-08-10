@@ -87,6 +87,7 @@ In the commands above
 - enter the path of your data folder which includes a configuration file for `<path-to-data-and-config>`
 - enter the max. number of cores to be used by msiFlow for `<number-of-cores>`. To provide all cores type *all*.
 - enter the path of your configuration file for `<path-to-config>` when using the **local** version. 
+- add `--resources mem_mb=<available_RAM_in_MB>` to specify the available RAM to prevent out-of-memory errors for MSI pre-processing (optional for local execution in the command-line)
 
 ### Workflow-specific information
 

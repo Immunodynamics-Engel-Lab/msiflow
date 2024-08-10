@@ -66,11 +66,11 @@ if __name__ == '__main__':
     # read data
     # expected annotation in file names: class_group_sample.tif
     imzML_files = [file for file in os.listdir(args.imzML_dir) if file.endswith('.imzML')]
-    imzML_files = np.array(sorted(imzML_files, key=lambda x: int(x.split('.')[0][-2:])))
+    imzML_files = np.array(sorted(imzML_files, key=lambda x: x.split('.')[0].split('_')[-1]))
     file_names = [f.split('.')[0] for f in imzML_files]
-    samples = [f.split('.')[0][-2:] for f in imzML_files]
+    samples = [f.split('.')[0].split('_')[-1] for f in imzML_files]
     bin_imgs = [file for file in os.listdir(args.bin_img_dir) if file.endswith('.tif')]
-    bin_imgs = np.array(sorted(bin_imgs, key=lambda x: int(x.split('.')[0][-2:])))
+    bin_imgs = np.array(sorted(bin_imgs, key=lambda x: x.split('.')[0].split('_')[-1]))
     classes = set([f.split('_')[0] for f in bin_imgs])
     #classes = set([f.split('.')[0].split('_')[0] + '_' + f.split('.')[0].split('_')[1] for f in bin_imgs])
     class_labels_dict = {k: i for k, i in enumerate(classes, 0)}

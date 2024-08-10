@@ -68,9 +68,9 @@ DATA_PATH = config['data']
 # BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
 # BM_REPEAT = 5
 
-imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
-bin_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_group_sampleno.tif
-img_stack_pattern = r"^[a-zA-z0-9]+_[0-9]+\.tif$"  # image stack files must be named: group_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
+bin_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[a-zA-z0-9]+\.tif$"  # binary image files must be named: class_group_sampleno.tif
+img_stack_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.tif$"  # image stack files must be named: group_sampleno.tif
 
 SAVE = config['classification']['save_ion_imgs']
 SAVE_UMAP = config['classification']['save_umap_imgs']

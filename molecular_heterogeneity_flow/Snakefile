@@ -30,8 +30,8 @@ MOL_HET_SCRIPT_PATH = 'molecular_heterogeneity_flow/scripts'
 VIS_SCRIPT_PATH = 'data_visualization'
 MSI_SEG_SCRIPT_PATH = 'msi_segmentation_flow/scripts'
 
-imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
-roi_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: roi_group_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.imzML$" # imzML files must be named: group_sampleno.imzML
+roi_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[a-zA-z0-9]+\.tif$"  # binary image files must be named: roi_group_sampleno.tif
 
 DATA_PATH = config['data']
 # BENCHMARK_PATH = os.path.join(DATA_PATH, 'benchmark')

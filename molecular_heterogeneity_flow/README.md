@@ -38,7 +38,7 @@ Your data folder must contain the following directories and files:
 
 #### Configuration file
 When using the **command-line interface** you must provide a **configuration file** named *config.yaml* to run this workflow. All parameters used by the workflow are defined in
-this configuration file. See the [wiki]() for a description of all parameters. An example configuration file can be
+this configuration file. See the [wiki](https://github.com/Immunodynamics-Engel-Lab/msiflow/wiki/Parameters#molecular-heterogeneity-workflow) for a description of all parameters. An example configuration file can be
 found [here](https://github.com/Immunodynamics-Engel-Lab/msiflow/blob/main/msi_segmentation_flow/data/config.yaml).
 
 When using the **Docker** version of msiFlow the *config.yaml* must be provided in the data folder. 

@@ -39,7 +39,10 @@ DATA_PATH = config['data']
 
 MOV_DIR = join(DATA_PATH, 'moving')
 FIX_DIR = join(DATA_PATH, 'fixed')
-FIX_MASK_DIR = join(DATA_PATH, 'fixed/mask')
+if os.path.exists(join(DATA_PATH, 'fixed/mask')):
+    FIX_MASK_DIR = join(DATA_PATH, 'fixed/mask')
+else:
+    FIX_MASK_DIR = ''
 # BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
 # BM_REPEAT = 5
 

@@ -46,8 +46,8 @@ def get_input_all(root_dir, classes, file_names, annot, input_list=[]):
 configfile: 'data/config.yaml'
 
 
-imzML_pattern = r"^[a-zA-z0-9]+_[0-9]+\.imzML$" # imzML files must be named: condition_sampleno.imzML
-bin_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[0-9]+\.tif$"  # binary image files must be named: class_condition_sampleno.tif
+imzML_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.imzML$" # imzML files must be named: condition_sampleno.imzML
+bin_img_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+_[a-zA-z0-9]+\.tif$"  # binary image files must be named: class_condition_sampleno.tif
 
 SCRIPT_PATH = 'region_group_analysis_flow/scripts'
 VIS_SCRIPT_PATH = 'data_visualization'

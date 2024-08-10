@@ -9,6 +9,8 @@ pd.options.mode.chained_assignment = None  # default='warn'
 def merge_files(base_df, file_dir, file_list):
     for fl in file_list:
         fl_df = pd.read_csv(os.path.join(file_dir, fl), index_col=0)
+        fl_name = fl.split('_')[0] + '_' + fl.split('_')[1]
+        fl_df.rename(columns={"Spatial coherence": fl_name}, inplace=True)
         base_df = pd.merge(base_df, fl_df, left_index=True, right_index=True)
     return base_df
 

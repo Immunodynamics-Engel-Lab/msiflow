@@ -21,7 +21,7 @@ output:
 configfile: 'data/config.yaml'
 
 
-msi_pattern = r"^[a-zA-z0-9]+_[0-9]+\.(imzML|d)$" # imzML files must be named: condition_sampleno.imzML
+msi_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.(imzML|d)$" # imzML files must be named: condition_sampleno.imzML
 
 
 SCRIPT_PATH = os.path.join('msi_preprocessing_flow', 'scripts')
@@ -43,6 +43,20 @@ else:
     ruleorder: single_sample_segmentation > get_matrix_img_list
 if config['matrix_removal']['clustering']:
     ruleorder: single_sample_segmentation > get_matrix_img_list
+
+
+# Custom function to calculate resources based on file size
+def file_size_resources(wildcards, input_file):
+    # Get the file size in bytes
+    file_size = os.path.getsize(input_file)
+
+    # Convert file size to MB
+    file_size_mb = file_size / (1024 * 1024)
+
+    # Define the resources based on file size
+    mem_mb_needed = file_size_mb * 10
+
+    return {"mem_mb": mem_mb_needed}
 
 
 def get_input(out_dir, files, input_list=[]):
@@ -203,6 +217,8 @@ rule single_sample_segmentation:
     input: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML'
     output: get_output_path_single_sample_segmentation() + '/binary_imgs/{fl}_matrix_cluster.tif'
+    resources:
+        mem_mb=lambda wildcards: file_size_resources(wildcards,input_file="{}/peakpicking_{}snr/alignment_{}pxperc/{}.ibd".format(OUT_DIR,config['peak_picking']['snr'],config['alignment']['pixel_percentage'],wildcards.fl))["mem_mb"]
     # benchmark: repeat(BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/single_sample_segmentation.py {input:q} \
             -result_dir ' + get_output_path_single_sample_segmentation() + ' -method {config[matrix_removal][dim_reduction]} -n_components {config[matrix_removal][n_components]}'
