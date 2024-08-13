@@ -64,17 +64,19 @@ def find_between(data: np.ndarray, min_value: float, max_value: float):
 
 def get_ion_img_from_d(path, peak, window):
     reader = get_reader(path)
+    indices = reader.mz_index
     peak_min, peak_max = peak - window, peak + window
 
     res = np.zeros(reader.get_n_pixels(), dtype=np.float32)
-    for i, frame_id in enumerate(trange(1, reader.get_n_pixels(), desc="Extracting peak...", miniters=50)):
-        indices, y = reader.read_centroid_spectrum(frame_id)
+    for i, frame_id in enumerate(trange(1, reader.get_n_pixels(), desc="Extracting peak...", miniters=100)):
+        # indices, y = reader.read_centroid_spectrum(frame_id)
         x = reader.index_to_mz(frame_id, indices)
+        y = reader.read_profile_spectrum(frame_id)
         res[i] = y[find_between(x, peak_min, peak_max)].sum()
 
     # now we can insert the array of intensities into an ion image
     array = np.zeros((reader.y_size, reader.x_size), dtype=np.float32)
-    array[reader.y_coordinates_min, reader.x_coordinates_min] = res
+    array[reader.y_coordinates, reader.x_coordinates] = res
 
     # plt.imshow(array)
     # plt.show()

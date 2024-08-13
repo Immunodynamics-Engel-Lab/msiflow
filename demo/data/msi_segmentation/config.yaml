@@ -1,0 +1,22 @@
+data: 'data'
+
+general:
+  multi_sample: True
+  dot_size: 5
+
+dim_reduction:
+  method: 'umap'
+  n_components: 2
+
+umap:
+  metric: 'cosine'
+  n_neighbors: 30
+  min_dist: 0.0
+
+clustering:
+  method: 'hdbscan'
+  n_clusters: 3
+
+hdbscan:
+  min_cluster_size: 100
+  min_samples: 30

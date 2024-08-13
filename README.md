@@ -41,7 +41,7 @@ msiFlow can be run via **Docker** or **locally** by using a graphical user inter
 1. The **Docker version** of msiFlow is intended for **easy-to-use** execution and does not require package installations.
 2. The **local version** of msiFlow is intended for **development**.
 
-## Installation
+## Installation (< 5 min)
 
 ### Docker Version
 
@@ -61,6 +61,12 @@ To use the local version of msiFlow, follow these instructions:
 3. environment/package installation
    1. if you have Anaconda installed, create an environment of msiFlow by running `conda env create --file msiflow_env.yaml`. This creates an environemnt with all required packages at once.
    2. if you want to use pure Python, download all packages by running `pip install -r requirements.txt`
+
+## System requirements
+### Hardware 
+The hardware requirements depend on the data size. The [example data](https://doi.org/10.5281/zenodo.11913042) for most workflows (except MSI pre-processing and segmentation) can be processed on a computer with 8 GB RAM. The example data for MSI pre-processing and segmentation requires at least 120 GB RAM.
+### Software 
+All software dependencies and versions are listed in the [requirements.txt](https://github.com/Immunodynamics-Engel-Lab/msiflow/blob/main/requirements.txt) and can be installed via pip for local execution (see installation instructions above). The software has been tested on Ubuntu 20.04.6 LTS.
 
 ## Run msiFlow
 
@@ -98,7 +104,7 @@ Each workflow directory contains a **README** with detailed information on
   - example *config.yaml* is provided in each directory
   - a description of all parameters is provided in the [wiki](https://github.com/Immunodynamics-Engel-Lab/msiflow/wiki)
 - where and what **output** files are generated
-- where to find **example data** to test the workflow
+- where to find **example data** to run the workflow and reproduce the results
 
 ## Example data
 Generally all example data to test the workflows can be found on Zenodo:

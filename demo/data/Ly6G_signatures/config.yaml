@@ -1,0 +1,12 @@
+data: "data"
+
+classification:
+  model: "XGBoost"
+  img_channels: "2"
+  multiclass: False
+  class_balancing_method: "standard"
+  num_top_feat: 10
+  save_ion_imgs: True
+  save_umap_imgs: True
+  n_folds: 0
+  annotate: False

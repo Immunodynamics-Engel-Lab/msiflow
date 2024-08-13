@@ -103,9 +103,9 @@ def dimensionality_reduction(general_dict, umap_dict):
 
             reducer = umap.UMAP(n_components=general_dict['n_components'], metric=umap_dict['metric'],
                                 n_neighbors=umap_dict['n_neighbors'], min_dist=umap_dict['min_dist'],
-                                verbose=general_dict['debug'])
+                                verbose=general_dict['debug'], random_state=umap_dict['random_state'])
             embedding = reducer.fit_transform(spectra, y=labels)
-            pickle.dump(reducer, open(os.path.join(general_dict['result_dir'], filename + '_umap_model.sav'), 'wb'))
+            # pickle.dump(reducer, open(os.path.join(general_dict['result_dir'], filename + '_umap_model.sav'), 'wb'))
 
     embedding = utils.NormalizeData(embedding)
 
@@ -347,6 +347,8 @@ if __name__ == '__main__':
     parser.add_argument('-cmap', type=str, default='Spectral', help='cmap to use for all plots, default=\'Spectral\'')
     parser.add_argument('-dot_size', type=int, default=1, help='size for dots in scatterplots, default=1')
     parser.add_argument('-debug', type=bool, default=False, help='set to true if output should be plotted, default=False')
+    parser.add_argument('-random_state', type=int, default=42,
+                        help='set a value for reproducibility, default=42')
     args = parser.parse_args()
 
     if args.supervised_dir != '':
@@ -404,7 +406,8 @@ if __name__ == '__main__':
         "n_neighbors": args.n_neighbors,
         "min_dist": args.min_dist,
         "model_file": args.model_file,
-        "supervised_dir": args.supervised_dir
+        "supervised_dir": args.supervised_dir,
+        "random_state": args.random_state
     }
 
     cluster_params = {
