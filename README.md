@@ -112,11 +112,11 @@ You can use the script *run_demo.sh* to run the demo locally.
 The script applies registration, segmentation and feature extraction to identify lipidomic signatures of a specific marker (here Ly6G). 
 Alternatively, you can use the Docker cli version of msiFlow to reproduce the results by following these instructions:
 1. Get the Docker image `phispa1812/msiflow_cli` as described above in the installation instructions.
-2. Download this repo to save the [demo data](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo/data) on your computer. You will need to specify the path where the demo data is stored in *<path-to-demo-data>* in the following commands. 
+2. Download this repo to save the [demo data](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo/data) on your computer. You will need to specify the path where the demo data is stored in *path-to-demo-data* in the following commands. 
 3. Use the command to run the Docker version of msiFlow in the command-line as described above to
-   1. run `msi_if_registration_flow` with *<path-to-demo-data>/msi_if_registration* for `<path-to-data-and-config>`
-   2. run `if_segmentation_flow` with *<path-to-demo-data>/if_segmentation* for `<path-to-data-and-config>`. Before running the workflow, copy the registered image *<path-to-demo-data>/msi_if_registration/registered/UPEC_12.tif* into *<path-to-demo-data>/if_segmentation*. 
-   3. run `molecular_signatures_flow` with *<path-to-demo-data>/Ly6G_signatures* for `<path-to-data-and-config>`. Before running the workflow, copy the segmented image *<path-to-demo-data>/if_segmentation/segmented/UPEC_12.tif* into *<path-to-demo-data>/Ly6G_signatures/bin_imgs*. 
+   1. run `msi_if_registration_flow` with *path-to-demo-data/msi_if_registration* for `<path-to-data-and-config>`
+   2. run `if_segmentation_flow` with *path-to-demo-data/if_segmentation* for `<path-to-data-and-config>`. Before running the workflow, copy the registered image *path-to-demo-data/msi_if_registration/registered/UPEC_12.tif* into *path-to-demo-data/if_segmentation*. 
+   3. run `molecular_signatures_flow` with *path-to-demo-data/Ly6G_signatures* for `<path-to-data-and-config>`. Before running the workflow, copy the segmented image *path-to-demo-data/if_segmentation/segmented/UPEC_12.tif* into *path-to-demo-data/Ly6G_signatures/bin_imgs*. 
    
 The expected runtime for processing the demo data with the applied workflows is about 5 minutes on a normal desktop computer.  
 
