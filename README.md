@@ -108,11 +108,9 @@ Each workflow directory contains a **README** with detailed information on
 
 ## Demo
 A small dataset to demo msiFlow with the expected output files can be found [here](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo). 
-The following is an example of a typical use case of msiFlow. 
-In this example, we use the Docker cli version of msiFlow and employ registration, segmentation and feature extraction 
-to identify lipidomic signatures of a specific marker (here Ly6G). 
-
-To reproduce the results, follow these instructions:
+You can use the script *run_demo.sh* to run the demo locally. 
+The script applies registration, segmentation and feature extraction to identify lipidomic signatures of a specific marker (here Ly6G). 
+Alternatively, you can use the Docker cli version of msiFlow to reproduce the results by following these instructions:
 1. Get the Docker image `phispa1812/msiflow_cli` as described above in the installation instructions.
 2. Download this repo to save the [demo data](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo/data) on your computer. You will need to specify the path where the demo data is stored in *<path-to-demo-data>* in the following commands. 
 3. Use the command to run the Docker version of msiFlow in the command-line as described above to
