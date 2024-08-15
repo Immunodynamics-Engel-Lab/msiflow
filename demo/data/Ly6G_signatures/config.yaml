@@ -7,6 +7,6 @@ classification:
   class_balancing_method: "standard"
   num_top_feat: 10
   save_ion_imgs: True
-  save_umap_imgs: True
+  save_umap_imgs: False
   n_folds: 0
   annotate: False

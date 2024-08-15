@@ -347,8 +347,7 @@ if __name__ == '__main__':
     parser.add_argument('-cmap', type=str, default='Spectral', help='cmap to use for all plots, default=\'Spectral\'')
     parser.add_argument('-dot_size', type=int, default=1, help='size for dots in scatterplots, default=1')
     parser.add_argument('-debug', type=bool, default=False, help='set to true if output should be plotted, default=False')
-    parser.add_argument('-random_state', type=int, default=42,
-                        help='set a value for reproducibility, default=42')
+    parser.add_argument('-random_state', type=int, default=None, help='set a value for reproducibility, default=None')
     args = parser.parse_args()
 
     if args.supervised_dir != '':

@@ -103,14 +103,14 @@ if __name__ == '__main__':
                 #                    tol=args.tol, CLAHE=args.CLAHE, contrast_stretch=args.contrast_stretch,
                 #                    lower=args.lower, upper=args.upper, plot=args.plot, cmap=args.cmap,
                 #                    pyimzml=args.pyimzml, remove_isolated_px=args.remove_iso_px)
-                save_dir = os.path.join(os.path.join(args.output_dir, sample_num))
+                save_dir = os.path.join(args.output_dir, sample_num)
                 if not os.path.exists(save_dir):
                     os.mkdir(save_dir)
 
                 with multiprocessing.Pool() as pool:
                     # call the function for each item in parallel
                     pool.map(
-                        partial(plot_ion_image, input_file=os.path.join(input_dir, d),
+                        partial(plot_ion_image, input_file=d,
                                 output_file='', tol=args.tol, unit=args.unit, CLAHE=args.CLAHE,
                                 contrast_stretch=args.contrast_stretch, lower=args.lower, upper=args.upper,
                                 plot=args.plot,

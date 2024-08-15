@@ -164,7 +164,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
         if embedding_model != '':
             reducer = pickle.load(open(embedding_model, 'rb'))
         else:
-            reducer = umap.UMAP(n_components=2, metric=dist_metric, n_neighbors=n_neighbors, min_dist=min_dist, random_state=42).fit(spec_data)
+            reducer = umap.UMAP(n_components=2, metric=dist_metric, n_neighbors=n_neighbors, min_dist=min_dist, random_state=None).fit(spec_data)
             pickle.dump(reducer, open(os.path.join(result_dir, method + '_model.sav'), 'wb'), protocol=4)
         embedding = reducer.transform(spec_data)
     embedding = utils.NormalizeData(embedding)  # normalize to range [0, 1] corresponding to RGB color code

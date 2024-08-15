@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
+# set number of threads to 1 to generate reproducible registration results
+os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = '1'
+
 # get_ipython().run_line_magic('matplotlib', 'inline')
 plt.rcParams["figure.figsize"] = (10, 8)
 Image.MAX_IMAGE_PIXELS = None  # To avoid decompression bomb images warning from Pillow
@@ -64,7 +67,7 @@ def registration(fixed_img, moving_img, af_chan, out_dir, plot=False):
     # moving images
     RegImage = ants.registration(ants.from_numpy(fixed_img),
                                  ants.from_numpy(moving_img),
-                                 "SyNRA", syn_metric='mattes',)
+                                 "SyNRA", syn_metric='mattes', random_seed=42)
     # Reg_Image is a dictionary containing the transformed image from moving to
     # fixed space (warpedmovout, and warpedfixout respectively) and vise versa, and the
     # coressponding transformations (fwdtransforms, and invtransforms respectively)

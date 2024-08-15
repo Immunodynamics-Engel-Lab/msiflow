@@ -64,7 +64,7 @@ To use the local version of msiFlow, follow these instructions:
 
 ## System requirements
 ### Hardware 
-The hardware requirements depend on the data size. The [example data](https://doi.org/10.5281/zenodo.11913042) for most workflows (except MSI pre-processing and segmentation) can be processed on a computer with 8 GB RAM. The example data for MSI pre-processing and segmentation requires at least 120 GB RAM.
+The hardware requirements depend on the data size. The [example data](https://doi.org/10.5281/zenodo.11913042) for most workflows (except MSI pre-processing and segmentation) and the [demo data](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo/data) can be processed on a computer with 16 GB RAM. The example data for MSI pre-processing and segmentation requires at least 120 GB RAM.
 ### Software 
 All software dependencies and versions are listed in the [requirements.txt](https://github.com/Immunodynamics-Engel-Lab/msiflow/blob/main/requirements.txt) and can be installed via pip for local execution (see installation instructions above). The software has been tested on Ubuntu 20.04.6 LTS.
 
@@ -106,10 +106,27 @@ Each workflow directory contains a **README** with detailed information on
 - where and what **output** files are generated
 - where to find **example data** to run the workflow and reproduce the results
 
+## Demo
+A small dataset to demo msiFlow with the expected output files can be found [here](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo). 
+The following is an example of a typical use case of msiFlow. 
+In this example, we use the Docker cli version of msiFlow and employ registration, segmentation and feature extraction 
+to identify lipidomic signatures of a specific marker (here Ly6G). 
+
+To reproduce the results, follow these instructions:
+1. Get the Docker image `phispa1812/msiflow_cli` as described above in the installation instructions.
+2. Download this repo to save the [demo data](https://github.com/Immunodynamics-Engel-Lab/msiflow/tree/main/demo/data) on your computer. You will need to specify the path where the demo data is stored in *<path-to-demo-data>* in the following commands. 
+3. Use the command to run the Docker version of msiFlow in the command-line as described above to
+   1. run `msi_if_registration_flow` with *<path-to-demo-data>/msi_if_registration* for `<path-to-data-and-config>`
+   2. run `if_segmentation_flow` with *<path-to-demo-data>/if_segmentation* for `<path-to-data-and-config>`. Before running the workflow, copy the registered image *<path-to-demo-data>/msi_if_registration/registered/UPEC_12.tif* into *<path-to-demo-data>/if_segmentation*. 
+   3. run `molecular_signatures_flow` with *<path-to-demo-data>/Ly6G_signatures* for `<path-to-data-and-config>`. Before running the workflow, copy the segmented image *<path-to-demo-data>/if_segmentation/segmented/UPEC_12.tif* into *<path-to-demo-data>/Ly6G_signatures/bin_imgs*. 
+   
+The expected runtime for processing the demo data with the applied workflows is about 5 minutes on a normal desktop computer.  
+
 ## Example data
 Generally all example data to test the workflows can be found on Zenodo:
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11913042.svg)](https://doi.org/10.5281/zenodo.11913042)
+
 ## Correspondence
 [**Prof. Dr. Daniel R. Engel**](mailto:danielrobert.engel@uk-essen.de): Department of Immunodynamics, Institute of Experimental Immunology and Imaging, University Hospital Essen, Essen, Germany
 

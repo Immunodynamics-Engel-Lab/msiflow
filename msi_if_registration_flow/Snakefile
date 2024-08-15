@@ -56,7 +56,7 @@ rule umap:
     output: FIX_DIR + '/umap/umap_grayscale_{fl}.tif'
     # benchmark: repeat(BENCHMARK_PATH + "/{fl}.umap.benchmark.txt", BM_REPEAT)
     shell: 'python ' + MSI_SEG_SCRIPT_PATH + '/single_sample_segmentation.py {input} -result_dir ' + FIX_DIR
-            + '/umap -n_components 1 -cluster \'\''
+            + '/umap -n_components 1 -cluster \'\' -random_state 42'
 
 rule create_img_stacks:
     input: MOV_DIR + '/{fl}'

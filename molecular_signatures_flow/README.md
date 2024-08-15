@@ -33,8 +33,7 @@ Your data folder must contain the following directories and files:
 - directory named *msi* containing imzML files named *group_sampleno.imzML*
 - directory named *bin_imgs* containing binary images named *class_group_sampleno.tif* or directory with image stacks named *group_sampleno.tif*.
 - optional LipidMaps file named *annotation.tsv* containing potential lipid matches to measured m/z values
-- optional file with UMAP embedding (generated with `msi_segmentation_flow` or `molecular_heterogeneity_flow`) named *umap_data.csv*  
- to save UMAPs with intensity distribution top m/z
+- optional file with UMAP embedding (generated with `msi_segmentation_flow` or `molecular_heterogeneity_flow`) named *umap_data.csv* to save UMAPs with intensity distribution top m/z
 - *config.yaml* when using the **Docker** version of msiFlow with the **command-line interface** 
 
 #### Configuration file
