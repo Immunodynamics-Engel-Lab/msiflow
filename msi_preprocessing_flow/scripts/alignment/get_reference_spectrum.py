@@ -72,7 +72,7 @@ def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0):
     print("\npeaks found within {}".format(time.time() - start))
     ma = ma[hist[ma] >= px_perc]
     cmz = bin_edges[ma]
-    if plot:
+    if plot and dask == 0:
         #plt.hist(mz, n_bins, density=True)
         plt.plot(bin_edges[:-1], hist)
         #plt.stem(bin_edges[:-1], hist, markerfmt=' ', basefmt=" ")

@@ -13,6 +13,7 @@ from skimage.exposure import rescale_intensity
 import time
 import multiprocessing
 from functools import partial
+from pyImagingMSpec import image_measures
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg import utils
@@ -134,16 +135,25 @@ def get_sc(mz):
     return sc
 
 
+def get_spatial_chaos(mz):
+    mz_img = get_mz_img(pyx, msi_df, mz)
+    spatial_chaos = image_measures.measure_of_chaos(mz_img, nlevels=5)
+    return spatial_chaos
+
+
 #msi_img = '/home/phispa/cerebellum/peakpicking/alignment/deisotoping/intranorm_median/P04370/20221208_Brain_Trypsin_2h/20221208_Brain_Trypsin_2h_726_4046.tif'
 #msi_img = '/home/phispa/cerebellum/peakpicking/alignment/deisotoping/intranorm_median/P04370/20221208_Brain_Trypsin_2h/20221208_Brain_Trypsin_2h_1237_6436.tif'
 #msi_img = '/home/phispa/UPEC/MSI/798_54mz/15.tif'
 #find_min_spatial_coherence(msi_img, factor=0, quantiles=[60, 70, 80, 90], upper=100)
+#msi_img = utils.NormalizeData(tifffile.imread('/mnt/xio/Downloads/ion_informativeness_measure/UPEC_15.tif'))
+#print(image_measures.measure_of_chaos(msi_img, nlevels=30))
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Calculate spatial correlation of all m/z values of multiple imzML'
-                                                 'files')
+    parser = argparse.ArgumentParser(description='Calculate metric for ion image informativeness')
     parser.add_argument('imzML', type=str, help='imzML_file')
     parser.add_argument('-result_dir', type=str, default='', help='directory to store results, default=\'\' in input directory')
+    parser.add_argument('-metric', type=str, choices=["coherence", "chaos"], default='coherence', help='set metric (either spatial coherence or spatial chaos')
     parser.add_argument('-contrast_stretch', type=bool, default=False, help='set to True for contrast stretching')
     parser.add_argument('-tol', default=0.0001, type=float, help='tolerance')
     parser.add_argument('-CLAHE', default=False, type=bool, help='set to True for CLAHE')
@@ -176,20 +186,28 @@ if __name__ == '__main__':
     mzs = msi_df.columns.to_numpy()
     result_df = pd.DataFrame(index=mzs)
 
-    print("calculating spatial coherence of {} m/z values...".format(mzs.shape[0]))
+    if args.metric == "coherence":
+        func = get_sc
+    elif args.metric == "chaos":
+        func = get_spatial_chaos
+    else:
+        raise ValueError(f"Unknown metric: {metric}")
+
+    print("calculating spatial {} of {} m/z values...".format(args.metric, mzs.shape[0]))
     start = time.time()
     sc = []
 
     with multiprocessing.Pool() as pool:
         # call the function for each item in parallel
-        for result in pool.map(get_sc, mzs):
+        for result in pool.map(func, mzs):
             sc.append(result)
     print('duration: {}'.format(time.time() - start))
     # for mz in mzs:
     #     result = get_sc(mz)
     #     sc.append(result)
+    metric_col_name = 'Spatial ' + args.metric
 
-    res_df = pd.DataFrame(index=mzs, columns=['Spatial coherence'], data=sc)
+    res_df = pd.DataFrame(index=mzs, columns=[metric_col_name], data=sc)
     res_df.to_csv(os.path.join(args.result_dir, sample_num + '_sc.csv'))
     # print(res_df)
 
@@ -203,7 +221,7 @@ if __name__ == '__main__':
     counts, bins = np.histogram(sc, bins=n_bins)
 
     plt.hist(x=bins[:-1], bins=bins, weights=counts)
-    plt.xlabel('spatial coherence')
+    plt.xlabel(metric_col_name)
     plt.ylabel('count')
     plt.savefig(os.path.join(args.result_dir, sample_num + '_sc_distribution.svg'))
     if args.plot:

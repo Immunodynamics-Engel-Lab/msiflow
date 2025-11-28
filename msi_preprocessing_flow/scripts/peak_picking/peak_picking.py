@@ -19,7 +19,7 @@ def peak_pick(x, y, snr_thr=3, window_size=11, order=3, smooth=1, plot=0):
     # smooth signal
     if smooth == 1:
         smoothed_y = savgol_filter(y, window_size, order)
-        #smoothed_y[smoothed_y < 0] = 0
+        smoothed_y[smoothed_y < 0] = 0
     else:
         smoothed_y = y
 

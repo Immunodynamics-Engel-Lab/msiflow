@@ -18,7 +18,10 @@ def calc_log2_fold_change(gr_1, gr_2, log2=True):
 
 
 def calc_p_value(gr_1, gr_2):
-    result = []
+    result_test = []
+    result_t = []
+    result_p = []
+    result_degf = []
     for x in range(0, gr_1.shape[0]):
         grp1, grp2 = gr_1[x], gr_2[x]
         var = VarianceTest(grp1, grp2)
@@ -27,11 +30,26 @@ def calc_p_value(gr_1, gr_2):
         else:
             normal = False
         if normal:
-            _, pval = ttest_ind(grp1, grp2, equal_var=var, nan_policy='omit')
+            res = ttest_ind(grp1, grp2, equal_var=var, nan_policy='omit')
+            t = res.statistic
+            pval = res.pvalue
+            degf = res.df
+            if var:
+                # normal distribution with equal variances: standard t-test
+                test = 'standard t-test'
+            else:
+                # normal distirbution with unequal variances: Welch's t-test
+                test = 'Welch\'s t-test'
         else:
-            _, pval = ranksums(grp1, grp2)
-        result.append(pval)
-    return np.array(result)
+            # non-normally distribution: Wilcoxon rank-sum
+            test = 'Wilcoxon rank-sum'
+            t, pval = ranksums(grp1, grp2)
+            degf = np.nan
+        result_t.append(t)
+        result_p.append(pval)
+        result_degf.append(degf)
+        result_test.append(test)
+    return np.array(result_test), np.array(result_p), np.array(result_t), np.array(result_degf)
 
 
 def calc_snr(gr_1, gr_2):
@@ -108,14 +126,19 @@ def volcano_plot(input, output_dir, gr1, gr2, plot=True, transpose=False, fc_thr
     if ttest:
         _, p = ttest_ind(arr_gr1, arr_gr2, axis=1, equal_var=True, nan_policy='omit')  # standard t-test
     else:
-        p = calc_p_value(arr_gr1, arr_gr2)
+        stat_test, p, t, degf = calc_p_value(arr_gr1, arr_gr2)
     fold_change = calc_log2_fold_change(arr_gr1, arr_gr2, log2=True)
     snr = calc_snr(arr_gr1, arr_gr2)
+    df_data['mean'] = df_data[gr1_cols + gr2_cols].mean(axis=1).to_numpy()
+    df_data['std'] = df_data[gr1_cols + gr2_cols].std(axis=1).to_numpy()
+    df_data['statistical test'] = stat_test
+    df_data['test statistic'] = t
+    df_data['degree of freedom'] = degf
     df_data['p-value'] = p
     df_data['p-value'] = -np.log10(p)
     df_data['Fold change'] = fold_change
     df_data['SNR'] = snr
-    #df_data = df_data.dropna(axis=0)
+    # df_data = df_data.dropna(axis=0)
 
     # keep only peptide with highest p-value for one protein
     if protein_level:
@@ -246,72 +269,15 @@ def volcano_plot(input, output_dir, gr1, gr2, plot=True, transpose=False, fc_thr
     #print(df_sig)
     #print(df_data)
 
-    df_data.to_csv(os.path.join(output_dir, '{}_{}_{}_analysis.csv').format(annot_prefix, gr1, gr2), index=False)
+    df_data.rename(columns={'p-value': '-log10(p-value)'}, inplace=True)
+    df_data.rename(columns={'Fold change': 'log2(Fold change)'}, inplace=True)
+    df_data.rename(columns={'Unnamed: 0': 'm/z'}, inplace=True)
+
+    df_data.to_csv(os.path.join(output_dir, '{}_{}_{}_analysis.csv').format(annot_prefix, gr1, gr2), index=True)
     #if not df_sig.empty:
     df_sig.to_csv(os.path.join(output_dir, '{}_{}_{}_regulated.csv').format(annot_prefix, gr1, gr2), index=False)
     df_sig_up.to_csv(os.path.join(output_dir, '{}_{}_{}_upregulated.csv').format(annot_prefix, gr1, gr2), index=False)
     df_sig_down.to_csv(os.path.join(output_dir, '{}_{}_{}_downregulated.csv').format(annot_prefix, gr1, gr2), index=False)
-
-
-
-    # org_len = df_data.shape[0]
-    # # keep only best protein for each peptide
-    # #df_data = df_data.groupby("Accession", as_index=False).max()
-    #
-    # # for the same peptide keep the one with highest NSAF
-    # #idx = combined.groupby(['Peptide_mass'])['NSAF'].transform(max) == combined['NSAF']
-    #
-    # df_data = df_data.astype({"p-value": float})
-    #
-    # idx = df_data.groupby(['Accession'])['p-value'].transform(max) == df_data['p-value']
-    # df_data = df_data[idx]
-    # print('reduced data from {} to {} by keeping the peptide with highest p-value for each protein'.
-    #       format(org_len, df_data.shape[0]))
-    # print(df_data.columns)
-    #
-    # if fc_thr != 0:
-    #     conditions = [(df_data['p-value'] >= 1.3) & (df_data['Fold change'] > fc_thr),
-    #                   (df_data['p-value'] >= 1.3) & (df_data['Fold change'] < -fc_thr)]
-    # else:
-    #     conditions = [(df_data['p-value'] >= 1.3) & (df_data['Fold change'] > fc_thr),
-    #                   (df_data['p-value'] >= 1.3) & (df_data['Fold change'] < fc_thr)]
-    # choices = [1, -1]
-    # df_data['significance'] = np.select(conditions, choices, default=0)
-    #
-    # # plot volcano
-    # plt.figure(figsize=(8, 6))
-    # fig = sns.scatterplot(data=df_data[df_data['significance'] == 0], x="Fold change", y="p-value", s=7, alpha=0.2,
-    #                        palette=['lightsteelblue'], edgecolor='black', hue='significance', legend=False)
-    # sns.scatterplot(data=df_data[df_data['significance'] == 1], x="Fold change", y="p-value", s=7, alpha=1,
-    #                        palette=['red'], edgecolor='black', hue='significance', legend=False)
-    # sns.scatterplot(data=df_data[df_data['significance'] == -1], x="Fold change", y="p-value", s=7, alpha=1,
-    #                 palette=['steelblue'], edgecolor='black', hue='significance', legend=False)
-    #
-    # fig.axhline(1.3, color='k', linestyle='--', lw=0.8)
-    # if fc_thr != 0:
-    #     fig.axvline(-1, color='k', linestyle='--', lw=0.8)
-    #     fig.axvline(1, color='k', linestyle='--', lw=0.8)
-    # else:
-    #     fig.axvline(0, color='k', lw=0.3)
-    #
-    # plt.savefig(os.path.join(output_dir, 'volcano_plot.pdf'))
-    # if plot:
-    #     plt.show()
-    # plt.close()
-
-    # # save significant data file with p-value and fold change
-    # if regulation == 'up':
-    #     df_sig2 = df_data.loc[(df_data['p-value'] > 1.3) & (df_data['Fold change'] > fc_thr)]
-    # elif regulation == 'down':
-    #     if fc_thr != 0:
-    #         df_sig2 = df_data.loc[(df_data['p-value'] > 1.3) & (df_data['Fold change'] < -fc_thr)]
-    #     else:
-    #         df_sig2 = df_data.loc[(df_data['p-value'] > 1.3) & (df_data['Fold change'] < 0)]
-    # else:
-    #     df_sig2 = df_data.loc[(df_data['significance'] == 1) | (df_data['significance'] == -1)]
-    #
-    # df_sig2 = df_sig2.drop(columns=['significance', 'gr1_sum', 'gr2_sum'])
-    # df_sig2.to_csv(os.path.join(output_dir, '{}_{}_{}regulated_proteins.csv').format(gr1, gr2, regulation), index=False)
 
 
 if __name__ == '__main__':
