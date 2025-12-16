@@ -26,6 +26,8 @@ msi_pattern = r"^[a-zA-z0-9]+_[a-zA-z0-9]+\.(imzML|d)$" # imzML files must be na
 
 SCRIPT_PATH = os.path.join('msi_preprocessing_flow', 'scripts')
 SEGMENTATION_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'msi_segmentation_flow/scripts')
+ANALYSIS_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'region_group_analysis_flow/scripts')
+VIS_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'data_visualization')
 DATA_PATH = config['data']
 
 # BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
@@ -77,7 +79,9 @@ def get_input(out_dir, files, input_list=[]):
     if config['general']['deisotoping']:
         input_list.append(path + '/deisotoped/deiso_mz.npy')
         path += '/deisotoped'
+    input_list.append(path + '/summarized/summarized.csv')
     input_list.append(expand(path + '/{fl}.imzML', fl=files))
+    input_list.append(expand(path + '/{fl}.ome.tif',fl=files))
     #print(input_list)
     return input_list
 
@@ -173,6 +177,25 @@ def get_io_path_deisotoping():
     if config['general']['outlier_removal']:
         path += '/outlier_removal'
     out_path = path + '/deisotoped'
+    return path, out_path
+
+
+def get_io_path_summarize():
+    path = (OUT_DIR + '/peakpicking_{}snr/alignment_{}pxperc').format(config['peak_picking']['snr'],
+        config['alignment']['pixel_percentage'])
+    if config['general']['matrix_removal']:
+        path += '/matrix_removal'
+    if config['general']['peak_filtering']:
+        path += '/{}sc_filtered'.format(config['peak_filtering']['thr'])
+    if config['general']['norm']:
+        path += '/intranorm_{}'.format(config['intranorm']['method'])
+        if len(FILES) > 1:
+            path += '/internorm_{}'.format(config['internorm']['method'])
+    if config['general']['outlier_removal']:
+        path += '/outlier_removal'
+    if config['general']['deisotoping']:
+         path += '/deisotoped'
+    out_path = path + '/summarized'
     return path, out_path
 
 
@@ -354,7 +377,16 @@ rule deisotoping:
     shell: 'python ' + SCRIPT_PATH + '/deisotoping/deisotope.py {input.file:q} {input.reference:q} \
             -result_dir \'' + get_io_path_deisotoping()[1] + '\''
 
+rule summarize:
+    input: expand(get_io_path_summarize()[0] + '/{fl}.imzML', fl=FILES)
+    output: get_io_path_summarize()[1] + '/summarized.csv'
+    shell: 'python ' + ANALYSIS_SCRIPT_PATH + '/get_summarized_spectra.py \'' + get_io_path_summarize()[0]
+            + '\' -result_dir \'' + get_io_path_summarize()[1] + '\' -qc True'
 
+rule ion_image_stack:
+    input: get_io_path_summarize()[0] + '/{fl}.imzML'
+    output: get_io_path_summarize()[0] + '/{fl}.ome.tif'
+    shell: 'python ' + VIS_SCRIPT_PATH + '/generate_mz_tif_stack.py {input} {output}'
 # rule get_matrix_pixels_list:
 #     input: get_path_for_matrixsub(OUT_DIR) + '/{fl}.imzML'
 #     output: coords = get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction/{fl}_matrix_pixels.csv',

@@ -48,9 +48,15 @@ if __name__ == '__main__':
     # reduce data to defined mz
     p = ImzMLParser(args.imzML)
     with ImzMLWriter(os.path.join(args.result_dir, os.path.basename(args.imzML))) as writer:
-        for idx, (x, y, z) in enumerate(tqdm(p.coordinates)):
-            mzs, intensities = p.getspectrum(idx)
-            mzs = mzs.astype(np.float32)
-            peaks_idx = np.where(np.in1d(mzs, mzs_above_thr))[0]
-            writer.addSpectrum(mzs[peaks_idx], intensities[peaks_idx], (x, y, z))
+        if len(mzs_above_thr) == 0:
+            print('No m/z values above threshold \nWriting original peak spectra as imzML')
+            for idx, (x, y, z) in enumerate(tqdm(p.coordinates)):
+                mzs, intensities = p.getspectrum(idx)
+                writer.addSpectrum(mzs, intensities, (x, y, z))
+        else:
+            for idx, (x, y, z) in enumerate(tqdm(p.coordinates)):
+                mzs, intensities = p.getspectrum(idx)
+                mzs = mzs.astype(np.float32)
+                peaks_idx = np.where(np.in1d(mzs, mzs_above_thr))[0]
+                writer.addSpectrum(mzs[peaks_idx], intensities[peaks_idx], (x, y, z))
 

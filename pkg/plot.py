@@ -130,18 +130,23 @@ def get_ion_img_from_d(path, peak, window):
 
 
 def get_mz_img(pyx, msi_df, mz, tol=0.0):
-    lower = mz - tol
-    upper = mz + tol
-    mzs_cols = msi_df.columns.to_numpy()
-    mzs_cols_tol_range = np.where((mzs_cols >= lower) & (mzs_cols <= upper))
-    # print(mzs_cols_tol_range)
-    msi_df = msi_df.iloc[:, mzs_cols_tol_range[0]]
+    if tol != 0.0:
+        lower = mz - tol
+        upper = mz + tol
+        mzs_cols = msi_df.columns.to_numpy()
+        mzs_cols_tol_range = np.where((mzs_cols >= lower) & (mzs_cols <= upper))
+        #print(mzs_cols_tol_range)
+        msi_df = msi_df.iloc[:, mzs_cols_tol_range[0]]
+    else:
+        mz_column = msi_df.columns.get_loc(mz)
+        msi_df = msi_df.iloc[:, [mz_column]]
+
     msi_df['sum'] = msi_df.sum(axis=1)
-    # print(msi_df)
-    coords = msi_df.index.tolist()
+    #print(msi_df)
+
     msi_img = np.zeros(pyx)
-    for x_val, y_val in coords:
-        msi_img[y_val, x_val] = msi_df.loc[(x_val, y_val), 'sum']
+    for (x_val, y_val), value in msi_df['sum'].items():
+        msi_img[y_val, x_val] = value
     return msi_img
 
 
