@@ -21,8 +21,7 @@ from combat.pycombat import pycombat
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from pkg import utils
-from pkg.clustering import (kmeans_clustering, HDBSCAN_clustering, hierarchical_clustering, gaussian_mixture,
-                            kmedoids_clustering, spectral_clustering, som)
+from pkg.clustering import (kmeans_clustering, HDBSCAN_clustering, hierarchical_clustering, gaussian_mixture, spectral_clustering)
 
 warnings.filterwarnings('ignore', module='pyimzml')
 

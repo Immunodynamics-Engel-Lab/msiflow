@@ -4,19 +4,19 @@ import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
-from sklearn_som.som import SOM
-from sklearn_extra.cluster import KMedoids
+#from sklearn_som.som import SOM
+#from sklearn_extra.cluster import KMedoids
 from sklearn.cluster import SpectralClustering
 
 
-def som(data, k):
-   print(data.shape)
-   som = SOM(m=k, n=1, dim=data.shape[1])
-   som.fit(data)
+# def som(data, k):
+#    print(data.shape)
+#    som = SOM(m=k, n=1, dim=data.shape[1])
+#    som.fit(data)
 
-   class_labels = som.predict(data)
-   class_labels = class_labels.ravel()
-   return class_labels
+#    class_labels = som.predict(data)
+#    class_labels = class_labels.ravel()
+#    return class_labels
 
 
 def spectral_clustering(data, k):
@@ -24,9 +24,9 @@ def spectral_clustering(data, k):
     return clustering.labels_
 
 
-def kmedoids_clustering(data, k):
-    kmedoids = KMedoids(n_clusters=k).fit(data)
-    return kmedoids.labels_
+# def kmedoids_clustering(data, k):
+#     kmedoids = KMedoids(n_clusters=k).fit(data)
+#     return kmedoids.labels_
 
 
 def hierarchical_clustering(data, k):
