@@ -9,3 +9,4 @@ if_preprocessing:
 registration:
   af_chan: 2
   mask_val_chan: 3
+  transf_type: 'SyNRA'

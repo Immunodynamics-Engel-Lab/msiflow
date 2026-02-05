@@ -49,14 +49,14 @@ def plot_embedding(df, col, output_dir, method, pca=None, plot=False):
 
 
 def get_summarized_spectra(result_dir, imzML_dir='', sum_file='', method='mean', plot=False, mz_rows=False, save_plots=False):
+    # get all imzML files
+    imzML_files = [f for f in os.listdir(imzML_dir) if os.path.isfile(os.path.join(imzML_dir, f))
+                   and f.endswith('.imzML')]
+    print('found {} sample files in {}'.format(len(imzML_files), os.path.basename(imzML_dir)))
+
     if sum_file != '':
         df_sum_all = pd.read_csv(sum_file, index_col=0)
     else:
-        # get all imzML files
-        imzML_files = [f for f in os.listdir(imzML_dir) if os.path.isfile(os.path.join(imzML_dir, f))
-                    and f.endswith('.imzML')]
-        print('found {} sample files in {}'.format(len(imzML_files), os.path.basename(imzML_dir)))
-
         # len_mzs = []
         # set_mzs = set()
         # for file in imzML_files:
@@ -102,6 +102,8 @@ def get_summarized_spectra(result_dir, imzML_dir='', sum_file='', method='mean',
         plt.xlabel('m/z')
         plt.ylabel('Intensities [a.u.]')
         plt.savefig(os.path.join(qc_dir, 'summarized_spectra.svg'))
+        if plot:
+            plt.show()
         plt.close()
 
         # plot boxplot with summarized m/z intensities

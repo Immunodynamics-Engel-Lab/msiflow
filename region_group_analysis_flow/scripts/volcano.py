@@ -140,6 +140,22 @@ def volcano_plot(input, output_dir, gr1, gr2, plot=True, transpose=False, fc_thr
     df_data['SNR'] = snr
     # df_data = df_data.dropna(axis=0)
 
+    if len(gr1_cols) == 1 and len(gr2_cols) == 1:
+        print("groups contain only one sample")
+
+        df_filtered = pd.concat([df_data.nlargest(10, "Fold change"), df_data.nsmallest(10, "Fold change")])
+        df_filtered['Unnamed: 0'] = pd.to_numeric(df_filtered['Unnamed: 0'])
+
+        plt.figure(figsize=(10, 10))
+        sns.barplot(x='Fold change', y='Unnamed: 0', data=df_filtered, orient='h',
+                    order=df_filtered['Unnamed: 0'].to_list())
+        plt.xlabel('log2(FC)')
+        plt.ylabel('m/z')
+        plt.savefig(os.path.join(output_dir, f'{annot_prefix}_fold_change.svg'))
+        if plot:
+            plt.show()
+        plt.close()
+
     # keep only peptide with highest p-value for one protein
     if protein_level:
         idx = df_data.groupby(['Accession'])['p-value'].transform(max) == df_data['p-value']

@@ -70,7 +70,7 @@ if __name__ == '__main__':
         binary = np.zeros(img.shape)
         for i in range(img.shape[0]):
             if i in args.chan_to_seg_list:
-                binary[i] = segment(img[i], args.sigma, args.thr_method, args.min_size)
+                binary[i] = segment(img[i], args.sigma, args.thr_method, args.min_size, args.bin_closing_size)
             else:
                 binary[i] = img[i]
     # segment single image

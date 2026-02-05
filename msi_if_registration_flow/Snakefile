@@ -79,7 +79,7 @@ rule registration:
     output: os.path.dirname(MOV_DIR) + '/registered/{fl}.tif'
     # benchmark: repeat(BENCHMARK_PATH + "/{fl}.registration.benchmark.txt", BM_REPEAT)
     shell: 'python ' + MSI_IF_REG_SCRIPT_PATH + '/antspy_registration.py {input.fixed} {input.moving} '
-            '-af_chan {config[registration][af_chan]} -out_file {output}'
+            '-af_chan {config[registration][af_chan]} -out_file {output} -transf_type {config[registration][transf_type]}'
 
 rule validation:
     input: reg=os.path.dirname(MOV_DIR) + '/registered/{fl}.tif',

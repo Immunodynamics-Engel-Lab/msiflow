@@ -61,7 +61,7 @@ def apply_transform(fixed_img, moving_img_stack, transformlist, interpolator="li
     return reg_transf_img_stack
 
 
-def registration(fixed_img, moving_img, af_chan, out_dir, plot=False):
+def registration(fixed_img, moving_img, transf_type, af_chan, out_dir, plot=False):
     fixed_fn = os.path.basename(fixed_img)
     moving_fn = os.path.basename(moving_img)
     af_chan -= 1
@@ -84,7 +84,7 @@ def registration(fixed_img, moving_img, af_chan, out_dir, plot=False):
     # moving images
     RegImage = ants.registration(ants.from_numpy(fixed_img),
                                  ants.from_numpy(moving_img),
-                                 "SyNRA", syn_metric='mattes',)
+                                 transf_type, syn_metric='mattes',)
     # Reg_Image is a dictionary containing the transformed image from moving to
     # fixed space (warpedmovout, and warpedfixout respectively) and vise versa, and the
     # coressponding transformations (fwdtransforms, and invtransforms respectively)
@@ -124,6 +124,7 @@ if __name__ == '__main__':
                                                  '\nCaution: expects fixed and moving image to be same shape')
     parser.add_argument('fixed_img', type=str, help='path to fixed UMAP image')
     parser.add_argument('moving_img', type=str, help='path to moving image tif stack containing AF image')
+    parser.add_argument('-transf_type', type=str, default='SyNRA', help='type of transformation')
     parser.add_argument('-af_chan', type=int, default=0, help='autofluorescence image channel')
     parser.add_argument('-out_file', type=str, default='', help='registered output file')
     parser.add_argument('-plot', type=bool, default=False, help='set to True to plot')
@@ -138,6 +139,6 @@ if __name__ == '__main__':
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
-    registration(args.fixed_img, args.moving_img, args.af_chan, out_dir, args.plot)
+    registration(args.fixed_img, args.moving_img, args.transf_type, args.af_chan, out_dir, args.plot)
 
 
