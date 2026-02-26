@@ -38,6 +38,7 @@ FILES = files_match_pattern(INPUT_DIR, msi_pattern)
 FILES = [f.split('.')[0] for f in FILES]
 EXT = [f.split('.')[1] for f in os.listdir(INPUT_DIR) if f.endswith('.d') or f.endswith('.imzML')][0]
 #print('found {} files. \n processing files: {}'.format(len(FILES), FILES))
+MASS_LIST = [float(item) for item in config['general']['mass_list'].split(',')]
 
 if config['matrix_removal']['matrix_mzs']:
     ruleorder: get_matrix_img_list > single_sample_segmentation
@@ -61,7 +62,10 @@ def file_size_resources(wildcards, input_file):
     return {"mem_mb": mem_mb_needed}
 
 
-def get_input(out_dir, files, input_list=[]):
+def get_input(out_dir, files, mass_list, input_list=[]):
+    if mass_list:
+        input_list.append(expand(out_dir + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/quality_control/deviation_to_{mass}.png', mass=mass_list))
+
     path = (out_dir + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_'
             + str(config['alignment']['pixel_percentage']) + 'pxperc')
     if config['general']['matrix_removal']:
@@ -206,7 +210,7 @@ else:
 
 
 rule all:
-    input: get_input(OUT_DIR, FILES)
+    input: get_input(OUT_DIR, FILES, MASS_LIST)
     #input: expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/{fl}.imzML', fl=FILES)
     #input: expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML', fl=FILES)
 
@@ -216,7 +220,13 @@ rule peak_picking:
     # benchmark: repeat(BENCHMARK_PATH + "/{fl}.peak_picking.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_picking/peak_picking.py {input:q} -snr {config[peak_picking][snr]} \
             -window_size {config[peak_picking][window]} -order {config[peak_picking][order]} -smooth {config[peak_picking][smooth]} \
-            -out_dir \'' + INPUT_DIR + '/peakpicking_{config[peak_picking][snr]}snr\''
+            -out_dir \'' + INPUT_DIR + '/peakpicking_{config[peak_picking][snr]}snr\' -mass_list {config[general][mass_list]}'
+
+rule deviation_to_mass:
+    input: imzML_files = expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/{fl}.imzML', fl=FILES)
+    output: expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/quality_control/deviation_to_{mass}.png', mass=MASS_LIST)
+    shell: 'python ' + SCRIPT_PATH + '/qc/deviation_to_mass.py {config[general][mass_list]} ' + OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr \
+            -result_dir ' + OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/quality_control'
 
 rule get_reference_spectrum:
    input: expand(OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/{fl}.imzML', fl=FILES)
@@ -224,7 +234,7 @@ rule get_reference_spectrum:
    # benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
    shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py \'' +  OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr' +
            '\' -result_dir \'' + OUT_DIR + '/peakpicking_{config[peak_picking][snr]}snr/alignment_{config[alignment][pixel_percentage]}pxperc\' \
-           -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]}'
+           -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]}'
 
 rule alignment:
     input: file = OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/{fl}.imzML',

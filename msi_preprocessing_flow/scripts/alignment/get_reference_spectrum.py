@@ -40,8 +40,103 @@ class findpeaks_dask:
         return ma
 
 
+def plot_histo_around_mz(bin_edges, hist, smoothed, ma, mz_center, step_size=0.1, plot=False, out_dir=''):
+    # Find the range of bin edges around mz_center
+    bin_mask = (bin_edges[:-1] >= mz_center - step_size) & (bin_edges[1:] <= mz_center + step_size)
+
+    # Extract the relevant data within the selected range
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    filtered_centers = bin_centers[bin_mask]
+    filtered_hist = hist[bin_mask]
+    filtered_smoothed = smoothed[bin_mask]
+    filtered_ma = [m for m in ma if filtered_centers[0] <= bin_centers[m] <= filtered_centers[-1]]
+    reindexed_ma = [np.where(filtered_centers == bin_centers[m])[0][0] for m in filtered_ma]
+
+    # Find the index of the closest value to mz_center using the filtered `ma` indices
+    distances = np.abs(filtered_centers[reindexed_ma] - mz_center)  # Calculate absolute distances
+    closest_idx_in_ma = np.argmin(distances)  # Get the index of the minimum distance in `ma`
+
+    # Get the corresponding closest bin center from filtered_centers
+    closest_value = filtered_centers[reindexed_ma[closest_idx_in_ma]]
+
+    # Calculate the absolute difference and PPM difference
+    abs_diff = np.abs(closest_value - mz_center)
+    ppm_diff = (abs_diff / mz_center) * 1e6
+
+    # Plotting
+    plt.figure(figsize=(8, 5))
+
+    # Plot the filled histogram for the selected range
+    plt.fill_between(
+        filtered_centers,
+        filtered_hist,
+        step='mid',
+        alpha=0.6,
+        color='steelblue',
+        edgecolor='black',
+        linewidth=0.5,
+        label=f"Histogram"
+    )
+
+    # Overlay the smoothed curve
+    plt.plot(filtered_centers, filtered_smoothed, color='red', label="Smoothed curve")
+
+    # Mark the maxima
+    for i, idx in enumerate(reindexed_ma):
+        if i == 0:  # Add the label only for the first maxima
+            plt.plot(filtered_centers[idx], filtered_smoothed[idx], 'go', ms=5, label="Maxima")
+        else:  # For other maxima, do not add the label again
+            plt.plot(filtered_centers[idx], filtered_smoothed[idx], 'go', ms=5)
+
+    # Mark the closest point to mz_center
+    plt.plot(closest_value, filtered_smoothed[reindexed_ma[closest_idx_in_ma]], 'x', color='orange', ms=5,
+             label=f"Closest to mass")
+
+    # Labels and title
+    plt.ylabel('Rel. frequency')
+    plt.xlabel('m/z')
+    plt.title(f'Histogram around {mz_center} ± {step_size} m/z\n'
+              f'Closest m/z: {closest_value:.6f}, '
+              f'Abs diff: {abs_diff:.6f}, PPM diff: {ppm_diff:.6f}')
+    plt.legend(loc='best')
+
+    plt.savefig(os.path.join(out_dir, 'histo_around_{}.png'.format(mz_center)))
+
+    if plot:
+        plt.show()
+
+
+def plot_full_histo(bin_edges, hist, smoothed, ma, plot=False):
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+    plt.fill_between(
+        bin_centers,
+        hist,
+        step='mid',
+        alpha=0.6,
+        color='steelblue',
+        edgecolor='black',
+        linewidth=0.5,
+        label="histogram"
+    )
+
+    # Overlay smoothed curve
+    plt.plot(bin_centers, smoothed, color='red', label="smoothed")
+
+    # Mark maxima
+    plt.plot(bin_centers[ma], smoothed[ma], 'go', ms=5, label="maxima")
+
+    plt.ylabel('Rel. frequency')
+    plt.xlabel('Data')
+    plt.title('Histogram')
+    plt.legend()
+
+    if plot:
+        plt.show()
+
+
 ### adapted from pybasis function from https://bitbucket.org/iAnalytica/basis_pyproc/src/master/basis/preproc/palign.py
-def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0):
+def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0, mass_list=None, qc_dir=''):
     print("calculating cmz via histogram...")
     start = time.time()
     if dask == 1:
@@ -72,17 +167,14 @@ def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0):
     print("\npeaks found within {}".format(time.time() - start))
     ma = ma[hist[ma] >= px_perc]
     cmz = bin_edges[ma]
-    if plot and dask == 0:
-        #plt.hist(mz, n_bins, density=True)
-        plt.plot(bin_edges[:-1], hist)
-        #plt.stem(bin_edges[:-1], hist, markerfmt=' ', basefmt=" ")
-        plt.plot(bin_edges[:-1], smoothed, label="smoothed")
-        plt.plot(bin_edges[ma], smoothed[ma], 'go', ms=5, label="maxima")
-        plt.ylabel('Rel. frequency')
-        plt.legend()
-        plt.xlabel('Data')
-        plt.title('Histogram')
-        plt.show()
+    if dask == 0 and mass_list:
+        # plot histogram around specified m/z values
+        for mz in mass_list:
+            plot_histo_around_mz(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, mz_center=mz, plot=plot, out_dir=qc_dir)
+
+    if plot:
+        # plot full histogram
+        plot_full_histo(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, plot=plot)
     return cmz
 
 
@@ -224,6 +316,7 @@ if __name__ == '__main__':
                                                                    '- the higher, the more memory consuming, default=100')
     parser.add_argument('-dask', type=int, default=0, help='set to 1 to use dask, but not yet fully implemented')
     parser.add_argument('-debug', type=bool, default=False, help='set to True for debugging')
+    parser.add_argument('-mass_list', type=str, default='', help="comma-separated list of masses for QC")
     args = parser.parse_args()
 
     args.px_perc = args.px_perc / 100
@@ -232,6 +325,18 @@ if __name__ == '__main__':
         args.result_dir = os.path.join((args.imzML_dir), "alignment")
     if not os.path.exists(args.result_dir):
         os.mkdir(args.result_dir)
+
+    if args.mass_list != '':
+        try:
+            mass_list = [float(x) for x in args.mass_list.split(',')]
+        except ValueError:
+            print("Error: All elements in mass list must be valid floats.")
+        qc_dir = os.path.join(args.result_dir, "quality_control")
+        if not os.path.exists(qc_dir):
+            os.mkdir(qc_dir)
+    else:
+        mass_list = None
+        qc_dir = ''
 
     imzML_files = [f for f in os.listdir(args.imzML_dir) if os.path.isfile(os.path.join(args.imzML_dir, f))
                    and f.endswith('.imzML') and not f.startswith('.')]
@@ -270,7 +375,7 @@ if __name__ == '__main__':
     #print(num_pxs)
 
     # get common m/z vector
-    cmz = get_cmz_histo(mz=all_mzs, no_px=num_pxs, mz_res=args.mz_res, px_perc=args.px_perc, plot=args.debug, dask=args.dask)
+    cmz = get_cmz_histo(mz=all_mzs, no_px=num_pxs, mz_res=args.mz_res, px_perc=args.px_perc, plot=args.debug, dask=args.dask, mass_list=mass_list, qc_dir=qc_dir)
 
     if args.dask == 1:
         cmz = np.array(cmz)

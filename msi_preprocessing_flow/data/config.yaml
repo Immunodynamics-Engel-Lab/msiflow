@@ -6,6 +6,7 @@ general:
   norm: True
   outlier_removal: False
   deisotoping: True
+  mass_list: '369.351578,577.519037,760.585082,768.553782'
 
 peak_picking:
   snr: 3
