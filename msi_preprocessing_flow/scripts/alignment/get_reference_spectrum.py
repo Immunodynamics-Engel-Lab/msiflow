@@ -10,6 +10,7 @@ from scipy.signal import find_peaks
 import dask.array as da
 from scipy.signal import lfilter
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 
 
 class lfilter_dask:
@@ -40,12 +41,20 @@ class findpeaks_dask:
         return ma
 
 
-def plot_histo_around_mz(bin_edges, hist, smoothed, ma, mz_center, step_size=0.1, plot=False, out_dir=''):
+def plot_histo_around_mz(bin_edges, hist, smoothed, ma, mz_center, step_size=0.1, plot=False, out_dir='', dask=0):
     # Find the range of bin edges around mz_center
     bin_mask = (bin_edges[:-1] >= mz_center - step_size) & (bin_edges[1:] <= mz_center + step_size)
 
     # Extract the relevant data within the selected range
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+    # If dask is enabled, compute the necessary arrays
+    if dask == 1:
+        bin_centers = bin_centers.compute()
+        hist = hist.compute()
+        smoothed = smoothed.compute()
+        ma = ma.compute()
+
     filtered_centers = bin_centers[bin_mask]
     filtered_hist = hist[bin_mask]
     filtered_smoothed = smoothed[bin_mask]
@@ -106,9 +115,15 @@ def plot_histo_around_mz(bin_edges, hist, smoothed, ma, mz_center, step_size=0.1
         plt.show()
 
 
-def plot_full_histo(bin_edges, hist, smoothed, ma, plot=False):
+def plot_full_histo(bin_edges, hist, smoothed, ma, plot=False, dask=0):
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
 
+    if dask == 1:
+        bin_centers = bin_centers.compute()  # Compute Dask array
+        hist = hist.compute()
+        smoothed = smoothed.compute()
+
+    plt.figure(figsize=(8, 5))
     plt.fill_between(
         bin_centers,
         hist,
@@ -167,14 +182,13 @@ def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0, mass
     print("\npeaks found within {}".format(time.time() - start))
     ma = ma[hist[ma] >= px_perc]
     cmz = bin_edges[ma]
-    if dask == 0 and mass_list:
+    if mass_list:
         # plot histogram around specified m/z values
         for mz in mass_list:
-            plot_histo_around_mz(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, mz_center=mz, plot=plot, out_dir=qc_dir)
-
+            plot_histo_around_mz(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, mz_center=mz, plot=plot, out_dir=qc_dir, dask=dask)
     if plot:
         # plot full histogram
-        plot_full_histo(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, plot=plot)
+        plot_full_histo(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, plot=plot, dask=dask)
     return cmz
 
 
@@ -272,14 +286,118 @@ def smooth1D(x, y, window=10, method='loess', weighting='tri-cubic', dask=0):
 def get_mzs(imzfile):
     print("reading all m/z values from {}".format(imzfile))
     imzfile = ImzMLParser(imzfile, parse_lib='ElementTree')
-    n_intensities = sum(imzfile.intensityLengths[:10])
-    num_pxs = len(imzfile.coordinates[:10])
-    sp_indcs = np.concatenate((np.array([0]), np.cumsum(imzfile.intensityLengths[:10])))
+    n_intensities = sum(imzfile.intensityLengths)
+    num_pxs = len(imzfile.coordinates)
+    sp_indcs = np.concatenate((np.array([0]), np.cumsum(imzfile.intensityLengths)))
     mz = da.zeros(n_intensities, chunks='auto')
-    for idx, _ in enumerate(tqdm(imzfile.coordinates[:10])):
+    for idx, _ in enumerate(tqdm(imzfile.coordinates)):
         imz, _ = imzfile.getspectrum(idx)
         mz[sp_indcs[idx]:sp_indcs[idx + 1]] = imz
     return num_pxs, mz
+
+
+def read_file_numpy(fl, imzml_dir, perc):
+    """
+    Reads one file and returns:
+    - numpy array of mz values (float32)
+    - number of sampled pixels
+    """
+    p = ImzMLParser(os.path.join(imzml_dir, fl))
+
+    n_coords = len(p.coordinates)
+    num_px = int(n_coords * perc / 100)
+
+    idx_list = np.random.choice(n_coords, size=num_px, replace=False)
+
+    mzs_list = []
+    for idx in idx_list:
+        mzs, _ = p.getspectrum(idx)
+        mzs_list.append(np.asarray(mzs, dtype=np.float32))
+
+    if len(mzs_list) == 0:
+        return np.empty(0, dtype=np.float32), 0
+
+    return np.concatenate(mzs_list), num_px
+
+
+def collect_all_mzs_dask(imzML_files, imzml_dir, perc, n_jobs=None):
+    """
+    Returns
+    -------
+    all_mzs_dask : dask.array.Array  (lazy)
+    total_num_pxs : int
+    """
+
+    print("reading all m/z values (Dask mode)")
+
+    dask_arrays = []
+    total_num_pxs = 0
+
+    with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+        results = list(
+            tqdm(
+                executor.map(
+                    read_file_numpy,
+                    imzML_files,
+                    [imzml_dir] * len(imzML_files),
+                    [perc] * len(imzML_files),
+                ),
+                total=len(imzML_files),
+            )
+        )
+
+    for mz_array, num_px in results:
+        total_num_pxs += num_px
+
+        # Wrap numpy array as a single Dask chunk
+        dask_chunk = da.from_array(
+            mz_array,
+            chunks=len(mz_array)  # one chunk per file
+        )
+
+        dask_arrays.append(dask_chunk)
+
+    if len(dask_arrays) == 0:
+        return da.from_array(np.empty(0, dtype=np.float32)), 0
+
+    all_mzs_dask = da.concatenate(dask_arrays)
+
+    return all_mzs_dask, total_num_pxs
+
+
+def collect_all_mzs(imzML_files, imzml_dir, perc, n_jobs=None):
+    """
+    Returns
+    -------
+    all_mzs : np.ndarray
+    num_pxs : int
+    """
+
+    print("reading all m/z values")
+
+    all_arrays = []
+    total_num_pxs = 0
+
+    with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+        results = list(
+            tqdm(
+                executor.map(
+                    read_file_numpy,
+                    imzML_files,
+                    [imzml_dir] * len(imzML_files),
+                    [perc] * len(imzML_files),
+                ),
+                total=len(imzML_files),
+            )
+        )
+
+    for mz_array, num_px in results:
+        all_arrays.append(mz_array)
+        total_num_pxs += num_px
+
+    all_mzs = np.concatenate(all_arrays)
+
+    return all_mzs, total_num_pxs
 
 
 if __name__ == '__main__':
@@ -343,42 +461,26 @@ if __name__ == '__main__':
     imzML_paths = [os.path.join(args.imzML_dir, f) for f in imzML_files]
 
     if args.dask == 1:
-        res = []
-        with multiprocessing.Pool() as pool:
-            for result in pool.map(get_mzs, imzML_paths):
-                res.append(result)
-        pool.close()
-        num_pxs, mz_list = zip(*res)
-        num_pxs = np.sum(num_pxs)
-        all_mzs = mz_list[0]
-        print("merging all mz values into one array")
-        for i in tqdm(range(1, len(mz_list))):
-            all_mzs = da.concatenate([all_mzs, mz_list[i]], axis=0)
+        all_mzs, num_pxs = collect_all_mzs_dask(
+            imzML_files=imzML_files,
+            imzml_dir=args.imzML_dir,
+            perc=args.num_px_perc,
+            n_jobs=None
+        )
+        #all_mzs = all_mzs_dask.compute()
     else:
-        all_mzs = []
-        num_pxs = 0
-        print("reading all m/z values")
-        for fl in tqdm(imzML_files):
-            p = ImzMLParser(os.path.join(args.imzML_dir, fl))
-            # only take specific percentage of pixels randomly
-            num_px = int((len(p.coordinates) / 100) * args.num_px_perc)
-            num_pxs += num_px
-            idx_list = random.sample(range(0, len(p.coordinates)), num_px)
-            # num_px = int((len(p.coordinates[:10]) / 100) * args.num_px_perc)
-            # num_pxs += len(p.coordinates[:10])
-            # idx_list = range(0, len(p.coordinates[:10]))
-            for id in idx_list:
-                mzs, _ = p.getspectrum(id)
-                all_mzs.extend(mzs)
-        all_mzs = np.asarray(all_mzs).astype(np.float32)
-    #print(all_mzs.shape)
-    #print(num_pxs)
+        all_mzs, num_pxs = collect_all_mzs(
+            imzML_files=imzML_files,
+            imzml_dir=args.imzML_dir,
+            perc=args.num_px_perc,
+            n_jobs=None
+        )
 
     # get common m/z vector
     cmz = get_cmz_histo(mz=all_mzs, no_px=num_pxs, mz_res=args.mz_res, px_perc=args.px_perc, plot=args.debug, dask=args.dask, mass_list=mass_list, qc_dir=qc_dir)
 
     if args.dask == 1:
-        cmz = np.array(cmz)
+        cmz = cmz.compute()
 
     #print(cmz)
 
