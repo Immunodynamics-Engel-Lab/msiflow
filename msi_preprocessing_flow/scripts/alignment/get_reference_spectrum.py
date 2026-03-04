@@ -11,6 +11,7 @@ import dask.array as da
 from scipy.signal import lfilter
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
+import psutil
 
 
 class lfilter_dask:
@@ -163,21 +164,25 @@ def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0, mass
     n_bins = int((np.round((mz_max - mz_min) / mz_res) + 1).astype(int))
     if dask == 1:
         hist, bin_edges = da.histogram(mz, bins=n_bins, range=(da.min(mz), da.max(mz)), weights=da.zeros_like(mz) + 1. / no_px)
+        print('compute hist')
+        hist = hist.compute()  # Pull into memory
+        print('compute bin edges')
+        bin_edges = bin_edges.compute()  # Pull into memory
     else:
         hist, bin_edges = np.histogram(mz, bins=n_bins, weights=np.zeros_like(mz) + 1. / no_px)
     #ma = argrelextrema(hist, np.greater)[0]
     # ma, _ = find_peaks(hist, height=0.01)
     # cmz = bin_edges[ma]
     print("\nhistogram generated within {}".format(time.time() - start))
-    smoothed = smooth1D(bin_edges, hist, dask=dask)
+    smoothed = smooth1D(bin_edges, hist, dask=0)
     print("\nsmoothed within {}".format(time.time() - start))
     #ma, _ = find_peaks(smoothed, height=0.05)
-    if dask == 1:
-        findpeaks_func = findpeaks_dask(height=None, threshold=None, distance=None, prominence = None, width = None,
-                                        wlen = None, rel_height = 0.5, plateau_size = None)
-        ma = da.map_overlap(findpeaks_func.compute_findpeaks, smoothed)
-    else:
-        ma, _ = find_peaks(smoothed, height=None, threshold=None, distance=None, prominence = None, width = None,
+    # if dask == 1:
+    #     findpeaks_func = findpeaks_dask(height=None, threshold=None, distance=None, prominence = None, width = None,
+    #                                     wlen = None, rel_height = 0.5, plateau_size = None)
+    #     ma = da.map_overlap(findpeaks_func.compute_findpeaks, smoothed)
+    # else:
+    ma, _ = find_peaks(smoothed, height=None, threshold=None, distance=None, prominence = None, width = None,
                        wlen = None, rel_height = 0.5, plateau_size = None)
     print("\npeaks found within {}".format(time.time() - start))
     ma = ma[hist[ma] >= px_perc]
@@ -185,10 +190,10 @@ def get_cmz_histo(mz, no_px, mz_res=0.01, px_perc=0.01, plot=False, dask=0, mass
     if mass_list:
         # plot histogram around specified m/z values
         for mz in mass_list:
-            plot_histo_around_mz(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, mz_center=mz, plot=plot, out_dir=qc_dir, dask=dask)
+            plot_histo_around_mz(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, mz_center=mz, plot=plot, out_dir=qc_dir, dask=0)
     if plot:
         # plot full histogram
-        plot_full_histo(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, plot=plot, dask=dask)
+        plot_full_histo(bin_edges=bin_edges, hist=hist, smoothed=smoothed, ma=ma, plot=plot, dask=0)
     return cmz
 
 
@@ -441,8 +446,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join((args.imzML_dir), "alignment")
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     if args.mass_list != '':
         try:
@@ -450,8 +454,7 @@ if __name__ == '__main__':
         except ValueError:
             print("Error: All elements in mass list must be valid floats.")
         qc_dir = os.path.join(args.result_dir, "quality_control")
-        if not os.path.exists(qc_dir):
-            os.mkdir(qc_dir)
+        os.makedirs(qc_dir, exist_ok=True)
     else:
         mass_list = None
         qc_dir = ''
@@ -478,11 +481,6 @@ if __name__ == '__main__':
 
     # get common m/z vector
     cmz = get_cmz_histo(mz=all_mzs, no_px=num_pxs, mz_res=args.mz_res, px_perc=args.px_perc, plot=args.debug, dask=args.dask, mass_list=mass_list, qc_dir=qc_dir)
-
-    if args.dask == 1:
-        cmz = cmz.compute()
-
-    #print(cmz)
 
     #print('reduced m/z vector from {} to {} bins'.format(np.unique(all_mzs).shape, cmz.shape))
     print('reduced m/z vector to {} bins'.format(cmz.shape[0]))

@@ -244,7 +244,7 @@ rule alignment:
             + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML'
     # benchmark: repeat(BENCHMARK_PATH + "/{fl}.alignment.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/alignment/alignment.py {input.file} {input.reference} -result_dir \'' + OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr'])
-           + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc\''
+           + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc\' -mass_list {config[general][mass_list]}'
 
 rule single_sample_segmentation:
     input: OUT_DIR + '/peakpicking_' +  str(config['peak_picking']['snr']) + 'snr/alignment_'

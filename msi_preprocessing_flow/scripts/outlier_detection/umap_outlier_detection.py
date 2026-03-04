@@ -38,12 +38,10 @@ if __name__ == '__main__':
     # create directories to save results
     if args.result_dir == '':
         args.result_dir = os.path.join(args.imzML_dir, "outlier_removal")
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     qc_dir = os.path.join(args.result_dir, 'quality_control')
-    if not os.path.exists(qc_dir):
-        os.mkdir(qc_dir)
+    os.makedirs(qc_dir, exist_ok=True)
 
     df = pd.read_csv(args.umap_cluster_file)
     clusters = np.unique(df['label'].to_numpy())

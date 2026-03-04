@@ -43,8 +43,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join((args.imzML_dir), "quality_control")
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     imzML_files = [f for f in os.listdir(args.imzML_dir) if os.path.isfile(os.path.join(args.imzML_dir, f))
                    and f.endswith('.imzML') and not f.startswith('.')]

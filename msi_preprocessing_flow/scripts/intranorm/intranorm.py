@@ -57,8 +57,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "intranormed")
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     fl_name = os.path.basename(args.imzML_fl).split('.')[0]
     p = ImzMLParser(args.imzML_fl)
@@ -88,8 +87,7 @@ if __name__ == '__main__':
     # quality control
     if args.qc == 1:
         qc_dir = os.path.join(args.result_dir, 'quality_control')
-        if not os.path.exists(qc_dir):
-            os.mkdir(qc_dir)
+        os.makedirs(qc_dir, exist_ok=True)
 
         # plot image with pixelwise scaling factors
         df_scfacs = pd.DataFrame(index=df_norm.index, columns=['scfactor'], data=scfacs)

@@ -207,8 +207,7 @@ if __name__ == '__main__':
 
     if args.out_dir == '':
         args.out_dir = os.path.abspath(os.path.join(os.path.dirname(args.input), 'peakpicking'))
-    if not os.path.exists(args.out_dir):
-        os.mkdir(args.out_dir)
+    os.makedirs(args.out_dir, exist_ok=True)
 
     if args.mass_list != '':
         try:
@@ -216,8 +215,7 @@ if __name__ == '__main__':
         except ValueError:
             print("Error: All elements in mass list must be valid floats.")
         qc_dir = os.path.join(args.out_dir, "quality_control")
-        if not os.path.exists(qc_dir):
-            os.mkdir(qc_dir)
+        os.makedirs(qc_dir, exist_ok=True)
     else:
         mass_list = None
         qc_dir = None

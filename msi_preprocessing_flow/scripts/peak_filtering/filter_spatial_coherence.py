@@ -39,8 +39,7 @@ if __name__ == '__main__':
         # print("sc_filtered_" + str(mzs_above_thr.shape[0]))
         args.result_dir = os.path.join(os.path.dirname(args.imzML), "sc_filtered_" + str(args.sc_thr) + '_thr' +
                                        str(mzs_above_thr.shape[0]) + '_peaks')
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     # mzs_above_thr = np.load(args.ref_mz).astype(np.float32)
     # print(mzs_above_thr.shape)

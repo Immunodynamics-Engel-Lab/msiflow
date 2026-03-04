@@ -35,8 +35,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "matrixpeaks")
-        if not os.path.exists(args.result_dir):
-            os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     p = ImzMLParser(args.imzML_fl)
     pyx = (p.imzmldict["max count of pixels y"], p.imzmldict["max count of pixels x"])

@@ -34,8 +34,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "matrix_removal")
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     if args.qc == 1:
         qc_path = os.path.join(args.result_dir, 'quality_control')

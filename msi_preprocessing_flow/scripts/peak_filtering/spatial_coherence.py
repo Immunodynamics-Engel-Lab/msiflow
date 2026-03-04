@@ -170,8 +170,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML))
-    if not os.path.exists(args.result_dir):
-        os.mkdir(args.result_dir)
+    os.makedirs(args.result_dir, exist_ok=True)
 
     # read in data
     sample_num = os.path.basename(args.imzML).split('.')[0]

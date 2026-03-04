@@ -15,8 +15,7 @@ if __name__ == '__main__':
 
     if args.result_dir == '':
         args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "deisotoped")
-        if not os.path.exists(args.result_dir):
-            os.mkdir(args.result_dir)
+        os.makedirs(args.result_dir, exist_ok=True)
 
     # load deiso mz
     deiso_mz = np.load(args.deiso_mz_fl).astype(np.float32)
