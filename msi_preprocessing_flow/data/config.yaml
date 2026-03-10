@@ -16,9 +16,10 @@ peak_picking:
 
 alignment:
   num_pixel_percentage: 100
-  mz_resolution: 0.005
+  mz_resolution: 3
+  unit: 'ppm'
   pixel_percentage: 3
-  max_shift: 0.01
+  max_shift: 5
 
 matrix_removal:
   clustering: True

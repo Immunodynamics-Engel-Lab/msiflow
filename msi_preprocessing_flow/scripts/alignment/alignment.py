@@ -6,6 +6,9 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from tqdm import tqdm
 import argparse
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+from pkg.utils import to_mz, to_ppm
 
 
 ### pybasis function from https://bitbucket.org/iAnalytica/basis_pyproc/src/master/basis/preproc/palign.py
@@ -79,8 +82,12 @@ def plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, pixel_id
     """
     plt.figure(figsize=(10, 8))
 
-    # Find the index in cmz closest to the mass
-    closest_idx = np.argmin(np.abs(cmz - mass))
+    # Calculate ppm difference between m/z and ref m/z
+    closest_ref_mass_idx = np.argmin(np.abs(cmz - mass))
+    closest_ref_mass = cmz[closest_ref_mass_idx]
+    closest_meas_mass_idx = np.argmin(np.abs(mzs - closest_ref_mass))
+    closest_meas_mass = mzs[closest_meas_mass_idx]
+    ppm_diff = (closest_meas_mass - closest_ref_mass) / mass * 1e6  # PPM difference
 
     # Plot around the mass (e.g., 0.1 Da range around the mass)
     window_range = 0.25
@@ -105,7 +112,8 @@ def plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, pixel_id
     #plt.stem(cmz_window, cmz_intensity_window, basefmt=" ", linefmt="g-", markerfmt="gx", label="Aligned Spectrum")
     plt.stem(mzs_window, intensities_window, basefmt=" ", markerfmt=" ", label="Original Spectrum")
     plt.stem(cmz_window, np.zeros_like(cmz_window), basefmt=" ", linefmt="r", markerfmt="rx", label="cmz (Reference)")
-    plt.title(f"Spectrum at m/z {mass} (Pixel {pixel_idx}) - Before Alignment")
+    plt.title(f"Spectrum at m/z {mass} (Pixel {pixel_idx}) - Before Alignment\n"
+              f"Closest m/z to {closest_ref_mass:.6f} is {closest_meas_mass:.6f} (PPM = {ppm_diff:.2f})")
     plt.xlabel('m/z')
     plt.ylabel('Intensity [a.u.]')
     plt.legend()
@@ -155,7 +163,8 @@ if __name__ == '__main__':
     parser.add_argument('-mass_list', type=str, default='', help="comma-separated list of masses for QC")
     parser.add_argument('-result_dir', type=str, default='',
                         help='directory to store result, default \'\' to save results to directory called alignment')
-    parser.add_argument('-max_shift', type=float, default=0.05, help='max mass shift in Da, default=0.05')
+    parser.add_argument('-max_shift', type=float, default=0.05, help='max mass shift in Da/ppm, default=0.05')
+    parser.add_argument('-unit', type=str, default='Da', help='unit (either Da or ppm')
     parser.add_argument('-debug', type=bool, default=False, help='set to True for debugging')
     args = parser.parse_args()
 
@@ -179,6 +188,8 @@ if __name__ == '__main__':
 
     # get common m/z vector
     cmz = np.load(args.refmz).astype(np.float32)
+    if args.unit == 'ppm':
+        cmz = to_ppm(cmz)
 
     # align all data to common m/z vector
     p = ImzMLParser(args.imzML_fl)
@@ -193,13 +204,19 @@ if __name__ == '__main__':
         for idx, (x, y, z) in enumerate(tqdm(p.coordinates)):
             mzs, intensities = p.getspectrum(idx)
             mzs = mzs.astype(np.float32)
+            if args.unit == 'ppm':
+                mzs = to_ppm(mzs)
             #cmz_intensities = get_ints_for_cmz(cmz, mzs, intensities)
             cmz_idx, matchmz_idx = pmatch_nn(cmz, mzs, args.max_shift)
             cmz_intensities = np.zeros(cmz.shape)
             cmz_intensities[cmz_idx] = intensities[matchmz_idx]
-            writer.addSpectrum(cmz, cmz_intensities, (x, y, z))
+
+            writer.addSpectrum(to_mz(cmz), cmz_intensities, (x, y, z))
 
             # Plot for the 3 random selected pixels
             if idx in random_pixel_indices:
                 for mass in mass_list:
-                    plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, idx, qc_dir, os.path.basename(args.imzML_fl).split('.')[0])
+                    if args.unit == 'ppm':
+                        plot_spectra_for_mass(to_mz(cmz), to_mz(mzs), intensities, cmz_intensities, mass, idx, qc_dir, os.path.basename(args.imzML_fl).split('.')[0])
+                    else:
+                        plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, idx, qc_dir, os.path.basename(args.imzML_fl).split('.')[0])

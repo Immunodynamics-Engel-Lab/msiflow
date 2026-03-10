@@ -10,6 +10,14 @@ from scipy import spatial
 from skimage.filters import threshold_otsu, threshold_yen, threshold_isodata, threshold_mean, threshold_minimum, threshold_triangle
 
 
+def to_ppm(value):
+    return np.log(value / 1.00794) * 1e6
+
+
+def to_mz(ppm_value):
+    return 1.00794 * np.exp(ppm_value / 1e6)
+
+
 def booltoint(v):
     if v == "false" or v == "False" or v == "0":
         return 0
