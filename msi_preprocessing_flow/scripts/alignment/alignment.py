@@ -6,6 +6,8 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from tqdm import tqdm
 import argparse
 import os
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from pkg.utils import to_mz, to_ppm
@@ -46,6 +48,15 @@ def pmatch_nn(refmz, mz, maxshift):
 
     # count how many peaks are mapped to one ref m/z
     refmzidcs = np.unique(mzindcs[filtindcs])
+
+    # return if no matches
+    if len(refmzidcs) == 0:
+        # print(
+        #     "No matches found between reference mz and measured mz within max_shift. "
+        #     f"Check your lock masses or increase max_shift={maxshift}."
+        # )
+        return np.array([], dtype=int), np.array([], dtype=int)
+
     refmzidcs = np.asarray(refmzidcs)
     mzbins = np.hstack([np.min(refmzidcs) - 0.5, refmzidcs.flatten() + .5])
     freq = np.histogram(mzindcs[filtindcs], bins=mzbins)
@@ -65,6 +76,31 @@ def pmatch_nn(refmz, mz, maxshift):
     mzindcs = filtindcs[uniqmzidx]
 
     return refmzidcs, mzindcs
+
+
+### adapted pybasis function from https://bitbucket.org/iAnalytica/basis_pyproc/src/master/basis/preproc/palign.py
+#shifts the entire spectrum by the median deviation of the measured m/z of the lock masses to their known values
+def calibrate_mz(mz, lockmz, mzmaxshift, mzunits='ppm'):
+    if mzunits == 'ppm':
+        lockppm = to_ppm(lockmz)
+        ppm = to_ppm(mz)
+        refidx, mzidx = pmatch_nn(lockppm, ppm, mzmaxshift)
+        if len(refidx) > 0:
+            median_dev = np.median(lockppm[refidx] - ppm[mzidx])
+            calibrated_mz = to_mz(ppm + median_dev)
+        else:
+            calibrated_mz = to_mz(ppm)
+            median_dev = -999
+    else:  # Da
+        refidx, mzidx = pmatch_nn(lockmz, mz, mzmaxshift)
+        if len(refidx) > 0:
+            median_dev = np.median(lockmz[refidx] - mz[mzidx])
+            calibrated_mz = mz + median_dev
+        else:
+            calibrated_mz = mz
+            median_dev = -999
+
+    return calibrated_mz, median_dev
 
 
 def plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, pixel_idx, result_dir, fl_name):
@@ -156,11 +192,42 @@ def plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, pixel_id
     plt.close()
 
 
+def plot_deviation_heatmap(median_dev_map, out_file):
+    # Example: median_dev_map as float array
+    # - np.nan = non-MSI pixel
+    # - -999 = no match
+    # - other values = median deviation
+
+    # Mask non-MSI pixels for base heatmap
+    base_mask = np.isnan(median_dev_map) | (median_dev_map == -999)
+    masked_heatmap = np.ma.masked_array(median_dev_map, mask=base_mask)
+
+    plt.figure(figsize=(12, 12))
+
+    # Base heatmap (viridis)
+    cmap = plt.cm.viridis
+    cmap.set_bad(color='black')  # non-MSI pixels -> black
+    im = plt.imshow(masked_heatmap, cmap=cmap, origin='lower', interpolation='none')
+
+    # Overlay no-match pixels (-999) in red
+    no_match_mask = (median_dev_map == -999)
+    plt.imshow(np.ma.masked_where(~no_match_mask, no_match_mask),
+               cmap=ListedColormap(['red']), origin='lower', interpolation='none')
+
+    plt.colorbar(im, label='Median deviation (ppm)')
+    plt.axis('off')
+    plt.savefig(out_file, dpi=300, bbox_inches='tight')
+    plt.show()
+
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Performs alignment to reference based on a nearest neighbor approach')
     parser.add_argument('imzML_fl', type=str, help='imzMl file')
-    parser.add_argument('refmz', type=str, help='reference file as numpy array')
-    parser.add_argument('-mass_list', type=str, default='', help="comma-separated list of masses for QC")
+    parser.add_argument('-refmz', type=str, default='', help='provide reference spectrum as numpy array to perform alignment')
+    parser.add_argument('-calibrate', type=int, default=0, help="set value to perform lock-mass calibration")
+    parser.add_argument('-mass_list', type=str, default='', help="comma-separated list of masses for QC and/or calibration")
     parser.add_argument('-result_dir', type=str, default='',
                         help='directory to store result, default \'\' to save results to directory called alignment')
     parser.add_argument('-max_shift', type=float, default=0.05, help='max mass shift in Da/ppm, default=0.05')
@@ -169,7 +236,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.result_dir == '':
-        args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "alignment")
+        if args.calibrate > 0:
+            args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "calibration")
+        else:
+            args.result_dir = os.path.join(os.path.dirname(args.imzML_fl), "alignment")
     os.makedirs(args.result_dir, exist_ok=True)
 
     if args.mass_list != '':
@@ -183,15 +253,17 @@ if __name__ == '__main__':
         mass_list = None
         qc_dir = None
 
-    all_mzs = []
-    all_ints = []
-
     # get common m/z vector
-    cmz = np.load(args.refmz).astype(np.float32)
-    if args.unit == 'ppm':
-        cmz = to_ppm(cmz)
+    if args.refmz != '':
+        print('performing alignment on reference spectrum')
+        cmz = np.load(args.refmz).astype(np.float32)
+        if args.unit == 'ppm':
+            cmz = to_ppm(cmz)
+    else:
+        print('performing lock mass calibration')
+        cmz = None
 
-    # align all data to common m/z vector
+    # read imzML file
     p = ImzMLParser(args.imzML_fl)
 
     # Get random 3 pixel indices for QC
@@ -200,23 +272,49 @@ if __name__ == '__main__':
     else:
         random_pixel_indices = None
 
+    # img for heatmap with median deviations of calibration
+    if args.calibrate > 0 and mass_list:
+        max_x = max(coord[0] for coord in p.coordinates)
+        max_y = max(coord[1] for coord in p.coordinates)
+        median_dev_map = np.full((max_y, max_x), np.nan, dtype=float)
+
+
     with ImzMLWriter(os.path.join(args.result_dir, os.path.basename(args.imzML_fl))) as writer:
         for idx, (x, y, z) in enumerate(tqdm(p.coordinates)):
+            # read spectra
             mzs, intensities = p.getspectrum(idx)
             mzs = mzs.astype(np.float32)
-            if args.unit == 'ppm':
-                mzs = to_ppm(mzs)
-            #cmz_intensities = get_ints_for_cmz(cmz, mzs, intensities)
-            cmz_idx, matchmz_idx = pmatch_nn(cmz, mzs, args.max_shift)
-            cmz_intensities = np.zeros(cmz.shape)
-            cmz_intensities[cmz_idx] = intensities[matchmz_idx]
 
-            writer.addSpectrum(to_mz(cmz), cmz_intensities, (x, y, z))
+            # align all data to common m/z vector
+            if cmz is not None:
+                if args.unit == 'ppm':
+                    mzs = to_ppm(mzs)
+                #print('cmz={}\nmzs{}\nintensities={}'.format(cmz, mzs, intensities))
+                cmz_idx, matchmz_idx = pmatch_nn(cmz, mzs, args.max_shift)
+                cmz_intensities = np.zeros(cmz.shape)
+                cmz_intensities[cmz_idx] = intensities[matchmz_idx]
+                writer.addSpectrum(cmz, cmz_intensities, (x, y, z))
 
-            # Plot for the 3 random selected pixels
-            if idx in random_pixel_indices:
-                for mass in mass_list:
-                    if args.unit == 'ppm':
-                        plot_spectra_for_mass(to_mz(cmz), to_mz(mzs), intensities, cmz_intensities, mass, idx, qc_dir, os.path.basename(args.imzML_fl).split('.')[0])
-                    else:
-                        plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, idx, qc_dir, os.path.basename(args.imzML_fl).split('.')[0])
+                # Plot for the 3 random selected pixels
+                if idx in random_pixel_indices:
+                    for mass in mass_list:
+                        if args.unit == 'ppm':
+                            plot_spectra_for_mass(to_mz(cmz), to_mz(mzs), intensities, cmz_intensities, mass, idx,
+                                                  qc_dir, os.path.basename(args.imzML_fl).split('.')[0])
+                        else:
+                            plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, idx, qc_dir,
+                                                  os.path.basename(args.imzML_fl).split('.')[0])
+
+            # calibrate spectrum based on lock masses
+            elif args.mass_list != '' and args.calibrate > 0:
+                #print("mzs={}\nmass list={}".format(mzs, mass_list))
+                cal_mzs, median_dev = calibrate_mz(mz=mzs, lockmz=np.array(mass_list, dtype=np.float32), mzmaxshift=args.max_shift, mzunits=args.unit)
+                median_dev_map[y - 1, x - 1] = median_dev
+                writer.addSpectrum(cal_mzs, intensities, (x, y, z))
+            else:
+                raise ValueError("No reference spectrum or lock masses provided.")
+
+    # img heatmap of median deviation of calibration
+    if args.calibrate > 0:
+        plot_deviation_heatmap(median_dev_map, os.path.join(qc_dir, os.path.basename(args.imzML_fl).split('.')[0] + '_median_lock_mass_deviation.png'))
+

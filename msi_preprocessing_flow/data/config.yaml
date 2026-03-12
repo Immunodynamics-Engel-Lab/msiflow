@@ -1,6 +1,7 @@
 data: "data"
 
 general:
+  calibration: False
   matrix_removal: True
   peak_filtering: True
   norm: True
