@@ -217,9 +217,7 @@ def plot_deviation_heatmap(median_dev_map, out_file):
     plt.colorbar(im, label='Median deviation (ppm)')
     plt.axis('off')
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
-    plt.show()
-
-
+    #plt.show()
 
 
 if __name__ == '__main__':
@@ -255,12 +253,12 @@ if __name__ == '__main__':
 
     # get common m/z vector
     if args.refmz != '':
-        print('performing alignment on reference spectrum')
+        # print('performing alignment on reference spectrum')
         cmz = np.load(args.refmz).astype(np.float32)
         if args.unit == 'ppm':
             cmz = to_ppm(cmz)
     else:
-        print('performing lock mass calibration')
+        # print('performing lock mass calibration')
         cmz = None
 
     # read imzML file

@@ -131,11 +131,17 @@ def get_pipeline_paths(out_dir, files, mass_list):
     paths['imzml'] = expand(f"{base_deiso}/{{fl}}.imzML", fl=files)
     paths['ometif'] = expand(f"{base_deiso}/{{fl}}.ome.tif", fl=files)
 
-    # QC deviation images
+    # QC deviation after peak picking
     if mass_list:
-        paths['deviation_images'] = expand(
-            f"{out_dir}/peakpicking_{snr}snr/quality_control/deviation_to_{{mass}}.png",
+        paths['deviation_peakpicking'] = expand(
+            f"{out_dir}/peakpicking_{snr}snr/quality_control/deviation_to_{{mass}}.npy",
             mass=mass_list
+        )
+
+    # QC deviation after calibration
+    if mass_list:
+        paths['deviation_calibration'] = expand(
+            f"{base_cal}/quality_control/deviation_to_{{mass}}.npy", mass=mass_list
         )
 
     # single-sample segmentation for matrix removal
@@ -164,9 +170,11 @@ def get_pipeline_paths(out_dir, files, mass_list):
 
 def get_input(out_dir, files, mass_list, input_list=[]):
     paths = get_pipeline_paths(out_dir, files, mass_list)
-    # QC deviation images
+    # QC deviation
     if mass_list:
-        input_list.append(paths['deviation_images'])
+        input_list.append(paths['deviation_peakpicking'])
+        if config['general']['calibration']:
+            input_list.append(paths['deviation_calibration'])
     # median spectrum for MFC inter-normalisation
     if config['general']['norm'] and len(files) > 1 and config['internorm']['method'] == 'mfc':
         input_list.append(paths['median_spectrum'])
@@ -204,9 +212,9 @@ rule peak_picking:
 
 rule deviation_to_mass:
     input: imzML_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML', fl=FILES)
-    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_images']
+    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_peakpicking']
     shell: 'python ' + SCRIPT_PATH + '/qc/deviation_to_mass.py {config[general][mass_list]} ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] +
-            ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control'
+            ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control -unit {config[alignment][unit]}'
 
 rule calibration:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML'
@@ -214,11 +222,19 @@ rule calibration:
     shell: 'python ' + SCRIPT_PATH + '/alignment/alignment.py {input} -calibrate 1 -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] +
            ' -mass_list {config[general][mass_list]} -max_shift {config[alignment][max_shift]} -unit {config[alignment][unit]}'
 
+rule deviation_to_mass_comparison:
+    input: calibrated_imzml=expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML', fl=FILES),
+            deviation_peakpicking=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_peakpicking']
+    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_calibration']
+    shell: 'python ' + SCRIPT_PATH + '/qc/deviation_to_mass.py {config[general][mass_list]} ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] +
+            ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/quality_control -unit {config[alignment][unit]} -comp_dir ' +
+            get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control'
+
 rule get_reference_spectrum:
    input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML', fl=FILES)
    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/cmz.npy'
    # benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
-   shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + ' -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]}'
+   shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + ' -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]} -unit {config[alignment][unit]}'
 
 rule alignment:
     input: file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML',
@@ -278,8 +294,8 @@ rule sum_spatial_coherence:
            imzML_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML', fl=FILES)
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/peaks_above_' + str(config['peak_filtering']['thr']) + 'sc.npy'
     # benchmark: repeat(BENCHMARK_PATH + "/sum_spatial_coherence.benchmark.txt", BM_REPEAT)
-    shell: 'python ' + SCRIPT_PATH + '/peak_filtering/get_mzs_above_spatial_coherence_thr.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal']
-            + ' -thr ' + str(config['peak_filtering']['thr']) + ' -sum ' + str(config['peak_filtering']['sum'])
+    shell: 'python ' + SCRIPT_PATH + '/peak_filtering/get_mzs_above_spatial_coherence_thr.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' '
+            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' -thr ' + str(config['peak_filtering']['thr']) + ' -sum ' + str(config['peak_filtering']['sum'])
 
 rule filter_spatial_coherence:
     input: imzML_file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML',
