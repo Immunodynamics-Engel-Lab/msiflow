@@ -78,27 +78,79 @@ def pmatch_nn(refmz, mz, maxshift):
     return refmzidcs, mzindcs
 
 
-### adapted pybasis function from https://bitbucket.org/iAnalytica/basis_pyproc/src/master/basis/preproc/palign.py
-#shifts the entire spectrum by the median deviation of the measured m/z of the lock masses to their known values
-def calibrate_mz(mz, lockmz, mzmaxshift, mzunits='ppm'):
+def calibrate_mz(mz, lockmz, mzmaxshift, mzunits='ppm', method='median', min_locks=5):
+    """
+    Calibrate m/z values using lock masses.
+
+    Parameters
+    ----------
+    mz : array-like
+        Measured m/z values.
+    lockmz : array-like
+        Reference lock masses.
+    mzmaxshift : float
+        Maximum allowed deviation for matching.
+    mzunits : str, default 'ppm'
+        Units for calibration ('ppm' or 'Da').
+    method : str, default 'median'
+        Calibration method: 'median' (constant shift) or 'linear' (linear regression).
+    min_locks : int, default 5
+        Minimum number of lock masses that must be matched within mzmaxshift.
+
+    Returns
+    -------
+    calibrated_mz : ndarray
+        Calibrated m/z values (or original if calibration failed).
+    median_dev : float
+        Median deviation applied (or -999 if calibration failed).
+    """
+    mz = np.asarray(mz).flatten()
+    lockmz = np.asarray(lockmz).flatten()
+
+    # Convert to ppm if needed
     if mzunits == 'ppm':
-        lockppm = to_ppm(lockmz)
-        ppm = to_ppm(mz)
-        refidx, mzidx = pmatch_nn(lockppm, ppm, mzmaxshift)
-        if len(refidx) > 0:
-            median_dev = np.median(lockppm[refidx] - ppm[mzidx])
-            calibrated_mz = to_mz(ppm + median_dev)
-        else:
-            calibrated_mz = to_mz(ppm)
-            median_dev = -999
-    else:  # Da
-        refidx, mzidx = pmatch_nn(lockmz, mz, mzmaxshift)
-        if len(refidx) > 0:
-            median_dev = np.median(lockmz[refidx] - mz[mzidx])
-            calibrated_mz = mz + median_dev
-        else:
-            calibrated_mz = mz
-            median_dev = -999
+        mzvals = to_ppm(mz)
+        lockvals = to_ppm(lockmz)
+    else:
+        mzvals = mz
+        lockvals = lockmz
+
+    deviations = []
+
+    # Find closest peak for each lock mass
+    for lm in lockvals:
+        idx = np.argmin(np.abs(mzvals - lm))
+        dev = lm - mzvals[idx]
+        if np.abs(dev) <= mzmaxshift:
+            deviations.append(dev)
+
+    deviations = np.array(deviations)
+
+    # Check if enough lock masses were matched
+    if len(deviations) < min_locks:
+        return mz, -999  # fail calibration
+
+    # Apply chosen calibration method
+    if method == 'median':
+        median_dev = np.median(deviations)
+        calibrated_mz = mzvals + median_dev
+        if mzunits == 'ppm':
+            calibrated_mz = to_mz(calibrated_mz)
+
+    elif method == 'linear':
+        # Linear regression using all matched lock peaks
+        matched_indices = [np.argmin(np.abs(mzvals - lm)) for lm in lockvals if np.abs(lm - mzvals[np.argmin(np.abs(mzvals - lm))]) <= mzmaxshift]
+        X_locks = np.vstack([mzvals[matched_indices], np.ones(len(matched_indices))]).T
+        Y_locks = deviations
+        coef, _, _, _ = np.linalg.lstsq(X_locks, Y_locks, rcond=None)
+        a, b = coef
+        calibrated_mz = mzvals + (a * mzvals + b)
+        if mzunits == 'ppm':
+            calibrated_mz = to_mz(calibrated_mz)
+        median_dev = np.median(deviations)
+
+    else:
+        raise ValueError("method must be 'median' or 'linear'")
 
     return calibrated_mz, median_dev
 
@@ -192,7 +244,7 @@ def plot_spectra_for_mass(cmz, mzs, intensities, cmz_intensities, mass, pixel_id
     plt.close()
 
 
-def plot_deviation_heatmap(median_dev_map, out_file):
+def plot_deviation_heatmap(median_dev_map, out_file, plot=False):
     # Example: median_dev_map as float array
     # - np.nan = non-MSI pixel
     # - -999 = no match
@@ -217,7 +269,9 @@ def plot_deviation_heatmap(median_dev_map, out_file):
     plt.colorbar(im, label='Median deviation (ppm)')
     plt.axis('off')
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
-    #plt.show()
+    if plot:
+        plt.show()
+    plt.close()
 
 
 if __name__ == '__main__':
@@ -230,6 +284,8 @@ if __name__ == '__main__':
                         help='directory to store result, default \'\' to save results to directory called alignment')
     parser.add_argument('-max_shift', type=float, default=0.05, help='max mass shift in Da/ppm, default=0.05')
     parser.add_argument('-unit', type=str, default='Da', help='unit (either Da or ppm')
+    parser.add_argument('-method', type=str, default='median', help='calibration method for computed mass error: either median or linear, default=median')
+    parser.add_argument('-min_locks', type=float, default=0, help='min number of lock masses to use for calibration, default=0 automatically sets to number of provided lock masses')
     parser.add_argument('-debug', type=bool, default=False, help='set to True for debugging')
     args = parser.parse_args()
 
@@ -257,9 +313,15 @@ if __name__ == '__main__':
         cmz = np.load(args.refmz).astype(np.float32)
         if args.unit == 'ppm':
             cmz = to_ppm(cmz)
-    else:
+    elif args.calibrate > 0 and args.mass_list != '':
         # print('performing lock mass calibration')
         cmz = None
+        if args.min_locks == 0:
+            min_locks = len(mass_list)
+        else:
+            min_locks = args.min_locks
+    else:
+        raise ValueError("Either reference m/z or mass list must be provided.")
 
     # read imzML file
     p = ImzMLParser(args.imzML_fl)
@@ -306,7 +368,7 @@ if __name__ == '__main__':
             # calibrate spectrum based on lock masses
             elif args.mass_list != '' and args.calibrate > 0:
                 #print("mzs={}\nmass list={}".format(mzs, mass_list))
-                cal_mzs, median_dev = calibrate_mz(mz=mzs, lockmz=np.array(mass_list, dtype=np.float32), mzmaxshift=args.max_shift, mzunits=args.unit)
+                cal_mzs, median_dev = calibrate_mz(mz=mzs, lockmz=np.array(mass_list, dtype=np.float32), mzmaxshift=args.max_shift, mzunits=args.unit, method=args.method, min_locks=min_locks)
                 median_dev_map[y - 1, x - 1] = median_dev
                 writer.addSpectrum(cal_mzs, intensities, (x, y, z))
             else:
@@ -314,5 +376,5 @@ if __name__ == '__main__':
 
     # img heatmap of median deviation of calibration
     if args.calibrate > 0:
-        plot_deviation_heatmap(median_dev_map, os.path.join(qc_dir, os.path.basename(args.imzML_fl).split('.')[0] + '_median_lock_mass_deviation.png'))
+        plot_deviation_heatmap(median_dev_map, os.path.join(qc_dir, os.path.basename(args.imzML_fl).split('.')[0] + '_median_lock_mass_deviation.png'), args.debug)
 
