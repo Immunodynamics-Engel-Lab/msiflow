@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create binary image')
     parser.add_argument('input', type=str, help='input tif image (stack)')
     parser.add_argument('-output', type=str, default='', help='output file to save segmented image')
-    parser.add_argument('-sigma', type=int, default=1, help='sigma for Gaussian smoothing')
+    parser.add_argument('-sigma', type=float, default=1, help='sigma for Gaussian smoothing')
     parser.add_argument('-thr_method', type=str, default='otsu', help='threshold algorithm',
                         choices=['otsu', 'yen', 'isodata', 'mean', 'minimum', 'triangle'])
     parser.add_argument('-min_size', type=int, default=10, help='all objects below this size will be removed')

@@ -266,7 +266,7 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     # plot results
 
     # individual scatterplot for each group
-    group_colors = ['tab:orange', 'tab:blue']
+    group_colors = ['tab:orange', 'tab:blue', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
     for i, group in enumerate(result_groups_dict.keys()):
         df_group = result_groups_dict.get(group)
         sns.scatterplot(x=col_1, y=col_2, hue='sample', data=df_group, legend='full', linewidth=0, s=dot_size)
@@ -317,6 +317,9 @@ def umap_groups(imzml_dir, result_dir, clustering='HDBSCAN', min_clusters=50, mi
     # scatterplots of complete data
     sns.scatterplot(x=col_1, y=col_2, hue='sample', data=df_result, legend='full', linewidth=0, s=dot_size)
     plt.title('All data colored by sample no.')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.axis('off')
     plt.savefig(os.path.join(result_dir, 'combined_2D_'+method+'_colored_by_sample.png'), dpi=300)
     plt.savefig(os.path.join(result_dir, 'combined_2D_' + method + '_colored_by_sample.svg'))
     plt.close()
@@ -399,7 +402,7 @@ if __name__ == '__main__':
     parser.add_argument('-embedding_model', type=str, default='', help='model of embedding')
     parser.add_argument('-dot_size', type=float, default=0.5, help='sot size for scatter plots')
     parser.add_argument('-cmap', type=str, default='Spectral', help='cmap')
-    parser.add_argument('-batch_correct', type=int, default=0, help='set to True to perform pyCOmbat batch correction')
+    parser.add_argument('-batch_correct', type=lambda x: utils.booltoint(x), default=0, help='set != 0 to perform pyCombat batch correction')
     args = parser.parse_args()
 
     if args.result_dir == '':

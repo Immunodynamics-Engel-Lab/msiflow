@@ -7,6 +7,9 @@ import matplotlib
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+from pkg.io import read_sep_file
 
 
 def plot_ranking(df, y_col, outfile, norm, plot=False):
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     # print(top_feat_imp_df)
 
     if args.annot_file != '':
-        df_annot = pd.read_csv(args.annot_file, delimiter='\t')
+        df_annot = read_sep_file(args.annot_file)
         df_annot[df_annot.columns[0]] = df_annot[df_annot.columns[0]].astype(np.float32)
         df_annot = df_annot[['Input Mass', 'Name']]
         df_annot.set_index('Input Mass', inplace=True, drop=True)

@@ -26,8 +26,9 @@ if __name__ == '__main__':
 
     if not df_ints.empty:
         cols = df_ints.columns.tolist()
-        cols = [i for i in cols if not 'Fold change' in i and not 'p-value' in i and not 'SNR' in i
-                and 'Unnamed: 0' not in i and not 'Lipid class' in i and not 'Lipid class no.' in i]
+        cols_exclude = {'Fold change', 'p-value', 'SNR', 'Unnamed: 0', 'Lipid class', 'Lipid class no.', 'mean', 'std',
+                        'statistical test', 'test statistic', 'degree of freedom'}
+        cols = [i for i in cols if i not in cols_exclude]
         df_ints = df_ints[cols]
 
         if 'Name' in df_ints:

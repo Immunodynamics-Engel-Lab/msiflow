@@ -1,6 +1,10 @@
 import argparse
 import pandas as pd
 import numpy as np
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+from pkg.io import read_sep_file
 
 
 if __name__ == '__main__':
@@ -14,7 +18,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     df1 = pd.read_csv(args.mz_file)
-    df2 = pd.read_csv(args.lipidmaps_file, delimiter='\t')
+    df2 = read_sep_file(args.lipidmaps_file)
     df1[df1.columns[0]] = df1[df1.columns[0]].astype(np.float32)
     df2[df2.columns[0]] = df2[df2.columns[0]].astype(np.float32)
 

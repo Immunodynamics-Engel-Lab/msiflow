@@ -31,7 +31,7 @@ def get_scfactors(spectra, method='median'):
 
 def get_sc_img(pyx, df):
     coords = df.index.tolist()
-    sc_img = np.zeros(pyx).astype(np.uint8)
+    sc_img = np.zeros(pyx, dtype=float)
     for x_val, y_val in coords:
         sc_img[y_val - 1, x_val - 1] = df.loc[(x_val, y_val), 'scfactor']
     return sc_img
@@ -66,9 +66,6 @@ if __name__ == '__main__':
 
     # ignore mz features and spectra with all zeros or nans
     df = df.replace(0, np.nan)
-    df = df.dropna(how='all', axis='columns')
-    # df = df.dropna(how='all', axis=0)
-    # df = df.dropna(how='all', axis=1)
     # print(df)
 
     # get scaling factors for spectra
@@ -128,14 +125,12 @@ if __name__ == '__main__':
             plt.close()
 
         # plot boxplots
-        flierprops = dict(marker='o', markersize=5, markeredgecolor='black', markerfacecolor='green', alpha=0.5)
-
-        ax = sns.boxplot(data=df_rand.T, showfliers=True, showmeans=True, flierprops=flierprops)
+        ax = sns.boxplot(data=df_rand.T, showfliers=False, showmeans=False)
         plt.ylabel("intensities", size=12)
         plt.savefig(os.path.join(qc_dir, fl_name + '_boxplot_before_norm.svg'))
         plt.close()
 
-        ax = sns.boxplot(data=df_norm_rand.T, showfliers=True, showmeans=True, flierprops=flierprops)
+        ax = sns.boxplot(data=df_norm_rand.T, showfliers=False, showmeans=False)
         plt.ylabel("intensities", size=12)
         plt.savefig(os.path.join(qc_dir, fl_name + '_boxplot_after_norm.svg'))
         plt.close()

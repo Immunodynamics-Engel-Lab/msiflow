@@ -110,7 +110,7 @@ if __name__ == '__main__':
                 with multiprocessing.Pool() as pool:
                     # call the function for each item in parallel
                     pool.map(
-                        partial(plot_ion_image, input_file=d,
+                        partial(plot_ion_image, input_file=os.path.join(input_dir, d),
                                 output_file='', tol=args.tol, unit=args.unit, CLAHE=args.CLAHE,
                                 contrast_stretch=args.contrast_stretch, lower=args.lower, upper=args.upper,
                                 plot=args.plot,

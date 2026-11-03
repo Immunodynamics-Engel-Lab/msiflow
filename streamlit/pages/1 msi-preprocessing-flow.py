@@ -37,6 +37,16 @@ def get_inputs():
         )
 
     with st.expander("general", expanded=True):
+        config["general"]["calibration"] = st.checkbox(
+            "calibration",
+            value=get_nested_value(config, "general.calibration"),
+            key="general.calibration",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "general.calibration",
+            ),
+        )
         config["general"]["matrix_removal"] = st.checkbox(
             "matrix removal",
             value=get_nested_value(config, "general.matrix_removal"),
@@ -87,6 +97,26 @@ def get_inputs():
                 "general.deisotoping",
             ),
         )
+        config["general"]["mass_list"] = st.text_input(
+            "mass list",
+            value=get_nested_value(config, "general.mass_list"),
+            key="general.mass_list",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "general.mass_list",
+            ),
+        )
+        config["general"]["qc_mass_list"] = st.text_input(
+            "QC mass list",
+            value=get_nested_value(config, "general.qc_mass_list"),
+            key="general.qc_mass_list",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "general.mass_list",
+            ),
+        )
 
     with st.expander("peak picking", expanded=True):
         config["peak_picking"]["snr"] = st.number_input(
@@ -130,6 +160,76 @@ def get_inputs():
             ),
         )
 
+    with st.expander("calibration", expanded=True):
+        config["calibration"]["min_locks"] = st.number_input(
+            "min lock masses",
+            value=get_nested_value(config, "calibration.min_locks"),
+            key="calibration.min_locks",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.min_locks",
+            ),
+        )
+        config["calibration"]["min_intensity"] = st.number_input(
+            "min intensity",
+            value=get_nested_value(config, "calibration.min_intensity"),
+            key="calibration.min_intensity",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.min_intensity",
+            ),
+        )
+        config["calibration"]["window_size"] = st.number_input(
+            "window size",
+            value=get_nested_value(config, "calibration.window_size"),
+            key="calibration.window_size",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.window_size",
+            ),
+        )
+        config["calibration"]["mode"] = st.selectbox(
+            "mode",
+            ["linear", "median"],
+            get_options_id(
+                get_nested_value(config, "calibration.mode"),
+                ["linear", "median"],
+            ),
+            key="calibration.mode",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.mode",
+            ),
+        )
+        config["calibration"]["unit"] = st.selectbox(
+            "unit",
+            ["ppm", "Da"],
+            get_options_id(
+                get_nested_value(config, "calibration.unit"),
+                ["ppm", "Da"],
+            ),
+            key="calibration.unit",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.unit",
+            ),
+        )
+        config["calibration"]["max_shift"] = st.number_input(
+            "max shift",
+            value=get_nested_value(config, "calibration.max_shift"),
+            key="calibration.max_shift",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "calibration.max_shift",
+            ),
+        )
+
     with st.expander("alignment", expanded=True):
         config["alignment"]["num_pixel_percentage"] = st.number_input(
             "number pixel percentage",
@@ -151,6 +251,20 @@ def get_inputs():
                 "alignment.mz_resolution",
             ),
         )
+        config["alignment"]["unit"] = st.selectbox(
+            "unit",
+            ["ppm", "Da"],
+            get_options_id(
+                get_nested_value(config, "alignment.unit"),
+                ["ppm", "Da"],
+            ),
+            key="alignment.unit",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.unit",
+            ),
+        )
         config["alignment"]["pixel_percentage"] = st.number_input(
             "pixel percentage",
             value=get_nested_value(config, "alignment.pixel_percentage"),
@@ -169,6 +283,90 @@ def get_inputs():
             args=(
                 CONFIGWORKFLOW,
                 "alignment.max_shift",
+            ),
+        )
+        config["alignment"]["mode"] = st.selectbox(
+            "mode",
+            ["chunked", "all"],
+            get_options_id(
+                get_nested_value(config, "alignment.mode"),
+                ["chunked", "all"],
+            ),
+            key="alignment.mode",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.mode",
+            ),
+        )
+        config["alignment"]["chunked"]["cores"] = st.number_input(
+            "number of cores for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.cores"),
+            key="alignment.chunked.cores",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.cores",
+            ),
+        )
+        config["alignment"]["chunked"]["memory_gb"] = st.number_input(
+            "memory (GB) for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.memory_gb"),
+            key="alignment.chunked.memory_gb",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.memory_gb",
+            ),
+        )
+        config["alignment"]["chunked"]["memory_per_worker_gb"] = st.number_input(
+            "memory per worker (GB) for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.memory_per_worker_gb"),
+            key="alignment.chunked.memory_per_worker_gb",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.memory_per_worker_gb",
+            ),
+        )
+        config["alignment"]["chunked"]["memory_overhead_gb"] = st.number_input(
+            "memory overhead (GB) for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.memory_overhead_gb"),
+            key="alignment.chunked.memory_overhead_gb",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.memory_overhead_gb",
+            ),
+        )
+        config["alignment"]["chunked"]["pixel_chunk_size"] = st.number_input(
+            "number of pixels per chunk",
+            value=get_nested_value(config, "alignment.chunked.pixel_chunk_size"),
+            key="alignment.chunked.pixel_chunk_size",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.pixel_chunk_size",
+            ),
+        )
+        config["alignment"]["chunked"]["mz_min"] = st.number_input(
+            "min mz for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.mz_min"),
+            key="alignment.chunked.mz_min",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.mz_min",
+            ),
+        )
+        config["alignment"]["chunked"]["mz_max"] = st.number_input(
+            "max mz for chunked processing",
+            value=get_nested_value(config, "alignment.chunked.mz_max"),
+            key="alignment.chunked.mz_max",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "alignment.chunked.mz_max",
             ),
         )
 
@@ -537,13 +735,27 @@ def get_inputs():
 
     with st.expander("deisotoping", expanded=True):
         config["deisotoping"]["tolerance"] = st.number_input(
-            "tolerance",
+            "mass tolerance",
             value=get_nested_value(config, "deisotoping.tolerance"),
             key="deisotoping.tolerance",
             on_change=update_value,
             args=(
                 CONFIGWORKFLOW,
                 "deisotoping.tolerance",
+            ),
+        )
+        config["deisotoping"]["unit"] = st.selectbox(
+            "unit",
+            ["ppm", "Da"],
+            get_options_id(
+                get_nested_value(config, "deisotoping.unit"),
+                ["ppm", "Da"],
+            ),
+            key="deisotoping.unit",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "deisotoping.unit",
             ),
         )
         config["deisotoping"]["min_isotopes"] = st.number_input(
@@ -566,6 +778,26 @@ def get_inputs():
                 "deisotoping.max_isotopes",
             ),
         )
+        config["deisotoping"]["corr_thr"] = st.number_input(
+            "min Pearson correlation coefficient",
+            value=get_nested_value(config, "deisotoping.corr_thr"),
+            key="deisotoping.corr_thr",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "deisotoping.corr_thr",
+            ),
+        )
+        config["deisotoping"]["intensity_thr"] = st.number_input(
+            "min isotope intensity percentage of predecessor",
+            value=get_nested_value(config, "deisotoping.intensity_thr"),
+            key="deisotoping.intensity_thr",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "deisotoping.intensity_thr",
+            ),
+        )
         config["deisotoping"]["openMS"] = st.checkbox(
             "openMS",
             value=get_nested_value(config, "deisotoping.openMS"),
@@ -574,6 +806,62 @@ def get_inputs():
             args=(
                 CONFIGWORKFLOW,
                 "deisotoping.openMS",
+            ),
+        )
+
+    with st.expander("annotation", expanded=True):
+        config["annotation"]["unit"] = st.selectbox(
+            "unit",
+            ["ppm", "Da"],
+            get_options_id(
+                get_nested_value(config, "annotation.unit"),
+                ["ppm", "Da"],
+            ),
+            key="annotation.unit",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotation.unit",
+            ),
+        )
+        config["annotation"]["tolerance"] = st.number_input(
+            "mass tolerance",
+            value=get_nested_value(config, "annotation.tolerance"),
+            key="annotation.tolerance",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotation.tolerance",
+            ),
+        )
+        config["annotation"]["even_chains_only"] = st.checkbox(
+            "even chains only",
+            value=get_nested_value(config, "annotation.even_chains_only"),
+            key="annotation.even_chains_only",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotation.even_chains_only",
+            ),
+        )
+        config["annotation"]["lipid_classes"] = st.text_input(
+            "lipid classes",
+            value=get_nested_value(config, "annotation.lipid_classes"),
+            key="annotation.lipid_classes",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotation.lipid_classes",
+            ),
+        )
+        config["annotation"]["adducts"] = st.text_input(
+            "adducts",
+            value=get_nested_value(config, "annotation.adducts"),
+            key="annotation.adducts",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "annotation.adducts",
             ),
         )
 

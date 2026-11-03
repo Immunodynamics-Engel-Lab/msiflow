@@ -3,10 +3,12 @@ data: 'data'
 general:
   multi_sample: False
   dot_size: 1
+  batch_correct: 0
 
 dim_reduction:
   method: 'umap'
   n_components: 2
+  model: ''
 
 umap:
   metric: 'cosine'

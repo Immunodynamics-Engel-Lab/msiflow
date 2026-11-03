@@ -12,6 +12,7 @@ import os
 import pandas as pd
 from imzy import get_reader
 import random
+import time
 
 warnings.filterwarnings('ignore', module='pyimzml')
 
@@ -67,7 +68,7 @@ def plot_peak_picking_for_mz(x, y, x_peaks, y_peaks, smoothed_y, x_peaks_above_s
     plt.xlabel('m/z')
     plt.legend()
 
-    plt.savefig(os.path.join(qc_dir, '{}_{}_{}_mz.png'.format(sample_name, pixel_id, mz_center)))
+    plt.savefig(os.path.join(qc_dir, '{}_{}_{}_mz.svg'.format(sample_name, pixel_id, mz_center)))
 
     if plot != 0:
         plt.show()
@@ -113,6 +114,10 @@ def peak_pick(x, y, snr_thr=3, window_size=11, order=3, smooth=1, plot=0, sample
 
 
 def peak_picking(path, outdir, snr_thr=3, window_size=11, order=3, smooth=1, quant=0, plot=0, mass_list=None, qc_dir=None):
+    t_read = 0.0
+    t_peak = 0.0
+    t_write = 0.0
+
     # pixel-wise peak picking on raw data saved as .d
     if os.path.splitext(path)[1] == '.d':
         # read .d data
@@ -130,12 +135,15 @@ def peak_picking(path, outdir, snr_thr=3, window_size=11, order=3, smooth=1, qua
 
             # perform pixel-wise peak picking
             for i, frame_id in enumerate(trange(1, reader.get_n_pixels(), desc="Extracting peak...", miniters=50)):
+                t0 = time.perf_counter()
                 # read in pixel spectrum
                 x_profile = reader.index_to_mz(frame_id, indices)
                 y_profile = reader.read_profile_spectrum(frame_id)
+                t_read += time.perf_counter() - t0
                 #indices_centroid, y_centroid = reader.read_centroid_spectrum(frame_id)
                 #x_centroid = reader.index_to_mz(1, indices_centroid)
 
+                t0 = time.perf_counter()
                 # perform peak picking on pixel spectrum
                 if frame_id in qc_idx or plot != 0:
                     x_peaks, y_peaks, y_smoothed = peak_pick(x_profile, y_profile, snr_thr, window_size, order, smooth,
@@ -143,8 +151,18 @@ def peak_picking(path, outdir, snr_thr=3, window_size=11, order=3, smooth=1, qua
                 else:
                     x_peaks, y_peaks, y_smoothed = peak_pick(x_profile, y_profile, snr_thr, window_size, order, smooth,
                                                              plot, mass_list=None, qc_dir=None)
+                t_peak += time.perf_counter() - t0
 
+                t0 = time.perf_counter()
                 writer.addSpectrum(x_peaks, y_peaks, (reader._xyz_coordinates[i][0], reader._xyz_coordinates[i][1], reader._xyz_coordinates[i][2]))
+                t_write += time.perf_counter() - t0
+
+        total = t_read + t_peak + t_write
+
+        print(f"Reading:      {t_read:.1f} s ({100 * t_read / total:.1f}%)")
+        print(f"Peak picking: {t_peak:.1f} s ({100 * t_peak / total:.1f}%)")
+        print(f"Writing:      {t_write:.1f} s ({100 * t_write / total:.1f}%)")
+        print(f"Total:        {total:.1f} s")
 
     # peak picking on summerized spectrum saved as .csv file
     elif os.path.splitext(path)[1] == '.csv':

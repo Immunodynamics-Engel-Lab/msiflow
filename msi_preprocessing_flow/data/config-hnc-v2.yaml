@@ -1,0 +1,102 @@
+data: "data"
+
+general:
+  calibration: True
+  matrix_removal: False
+  peak_filtering: True
+  norm: True
+  outlier_removal: False
+  deisotoping: True
+  mass_list: '369.351578,577.519037,760.585082'
+  qc_mass_list: '551.503387,703.574852,734.569432,786.600732'
+
+peak_picking:
+  snr: 2
+  smooth: 1
+  window: 11
+  order: 3
+
+calibration:
+  min_locks: 3
+  min_intensity: 100
+  window_size: 30
+  mode: 'linear'
+  unit: 'ppm'
+  max_shift: 30
+
+alignment:
+  num_pixel_percentage: 100
+  mz_resolution: 3
+  unit: 'ppm'
+  pixel_percentage: 3
+  max_shift: 5
+  mode: 'chunked'
+    chunked:
+      cores: 32
+      memory_gb: 281
+      memory_per_worker_gb: 3
+      memory_overhead_gb: 8
+      pixel_chunk_size: 50000
+      mz_min: 300
+      mz_max: 1500
+
+matrix_removal:
+  clustering: True
+  dim_reduction: 'umap'
+  n_components: 2
+  umap_params:
+    metric: 'cosine'
+    n_neighbors: 30
+    min_dist: 0.0
+  cluster_algorithm: 'hdbscan'
+  hdbscan_params:
+    min_samples: 50
+    min_cluster_size: 100
+  kmeans_params:
+    n_clusters: 2
+  pixel_removal: True
+  matrix_subtraction: False
+  matrix_peak_removal: False
+  num_matrix_peaks: 50
+  matrix_corr_thr: 0.8
+  pixel_perc_thr: 50
+  matrix_postproc: True
+  matrix_mzs: ''
+  thr_method: 'yen'
+
+peak_filtering:
+  sum: max
+  thr: 500
+
+intranorm:
+  method: 'mfc'
+
+internorm:
+  method: 'mfc'
+
+outlier_detection:
+  umap_params:
+    n_neighbors: 10
+  hdbscan_params:
+    min_samples: 1000
+    min_cluster_size: 5000
+  cluster_thr: 70
+  sample_thr: 70
+  remove_ssc: True
+
+deisotoping:
+  tolerance: 5
+  unit: 'ppm'
+  min_isotopes: 2
+  max_isotopes: 6
+  openMS: False
+  corr_thr: 0.4
+  intensity_thr: 0.2
+
+annotation:
+  unit: 'ppm'
+  tolerance: 5
+  even_chains_only: True
+  lipid_classes: 'FA,Cer,SM,HexCer,Hex2Cer,TG,DG,ST,PC,PA,PS,PE,PG'
+  adducts: 'H,Na,K'
+

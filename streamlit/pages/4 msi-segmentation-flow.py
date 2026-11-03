@@ -58,6 +58,16 @@ def get_inputs():
                 "general.dot_size",
             ),
         )
+        config["general"]["batch_correct"] = st.checkbox(
+            "batch correction",
+            value=get_nested_value(config, "general.batch_correct"),
+            key="general.batch_correct",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "general.batch_correct",
+            ),
+        )
 
     with st.expander("dimensionality reduction", expanded=True):
         config["dim_reduction"]["method"] = st.selectbox(
@@ -82,6 +92,16 @@ def get_inputs():
             args=(
                 CONFIGWORKFLOW,
                 "dim_reduction.n_components",
+            ),
+        )
+        config["dim_reduction"]["model"] = st.text_input(
+            "optional path to model",
+            value=get_nested_value(config, "dim_reduction.model"),
+            key="dim_reduction.model",
+            on_change=update_value,
+            args=(
+                CONFIGWORKFLOW,
+                "dim_reduction.model",
             ),
         )
 

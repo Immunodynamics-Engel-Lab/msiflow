@@ -1,5 +1,6 @@
 import os
 from os.path import join
+from pathlib import Path
 import sys
 
 sys.path.append(".")
@@ -30,15 +31,36 @@ ANALYSIS_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'region_group_analysis
 VIS_SCRIPT_PATH = os.path.join(SCRIPT_PATH, '../..', 'data_visualization')
 DATA_PATH = config['data']
 
-# BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
-# BM_REPEAT = 5
+BENCHMARK_PATH = join(DATA_PATH, 'benchmark')
+#BM_REPEAT = 1
 INPUT_DIR = join(DATA_PATH, 'msi')
 OUT_DIR = join(DATA_PATH, 'msi')
 FILES = files_match_pattern(INPUT_DIR, msi_pattern)
 FILES = [f.split('.')[0] for f in FILES]
 EXT = [f.split('.')[1] for f in os.listdir(INPUT_DIR) if f.endswith('.d') or f.endswith('.imzML')][0]
 #print('found {} files. \n processing files: {}'.format(len(FILES), FILES))
-MASS_LIST = [float(item) for item in config['general']['mass_list'].split(',')]
+SDF_FILES = list(Path(DATA_PATH).glob("*.sdf"))
+if len(SDF_FILES) == 1:
+    SDF_FILE = str(SDF_FILES[0])
+else:
+    SDF_FILE = None
+MASS_LIST = []
+MASS_LIST_STR = ''
+if config['general']['mass_list'] != '':
+    MASS_LIST_STR += config['general']['mass_list']
+    MASS_LIST.extend([float(item) for item in config['general']['mass_list'].split(',')])
+QC_MASS_LIST = MASS_LIST.copy()
+QC_MASS_LIST_STR = MASS_LIST_STR
+if config['general']['qc_mass_list'] != '':
+    if QC_MASS_LIST_STR != '':
+        QC_MASS_LIST_STR = QC_MASS_LIST_STR + ',' + config['general']['qc_mass_list']
+    else:
+        QC_MASS_LIST_STR += config['general']['qc_mass_list']
+    QC_MASS_LIST.extend([float(item) for item in config['general']['qc_mass_list'].split(',')])
+if config['calibration']:
+    MAX_VAL_DEV_HEATMAP = str(max(config['calibration']['max_shift'], config['alignment']['max_shift']))
+else:
+    MAX_VAL_DEV_HEATMAP = config['alignment']['max_shift']
 
 if config['matrix_removal']['matrix_mzs']:
     ruleorder: get_matrix_img_list > single_sample_segmentation
@@ -46,7 +68,15 @@ else:
     ruleorder: single_sample_segmentation > get_matrix_img_list
 if config['matrix_removal']['clustering']:
     ruleorder: single_sample_segmentation > get_matrix_img_list
+if config['alignment']['mode'] == 'all':
+    ruleorder: get_reference_spectrum_all > get_reference_spectrum_chunked
+else:
+    ruleorder: get_reference_spectrum_chunked > get_reference_spectrum_all
 
+CHUNKED = config["alignment"]["chunked"]
+MEM_PER_WORKER_GB = CHUNKED["memory_per_worker_gb"]
+MEM_OVERHEAD_GB = CHUNKED["memory_overhead_gb"]
+CHUNKED_WORKERS = min(CHUNKED["cores"], max(1, int((CHUNKED["memory_gb"] - CHUNKED["memory_overhead_gb"]) / CHUNKED["memory_per_worker_gb"])))
 
 # Custom function to calculate resources based on file size
 def file_size_resources(wildcards, input_file):
@@ -73,7 +103,7 @@ def get_pipeline_paths(out_dir, files, mass_list):
 
     # Stage 1: calibration
     if config['general']['calibration']:
-        base_cal = f"{base}/calibration"
+        base_cal = f"{base}/{config['calibration']['mode']}_{config['calibration']['min_locks']}locks_{config['calibration']['min_intensity']}intensity_{config['calibration']['max_shift']}shift_calibration"
     else:
         base_cal = base
     paths['calibration'] = base_cal
@@ -125,24 +155,33 @@ def get_pipeline_paths(out_dir, files, mass_list):
     paths['deiso_mz'] = f"{base_deiso}/deiso_mz.npy"
 
     # Stage 8: summarized CSV
-    paths['summarized_csv'] = f"{base_deiso}/summarized/summarized.csv"
+    base_summarized = f"{base_deiso}/summarized"
+    paths['summarized'] = base_summarized
+    paths['summarized_csv'] = f"{base_summarized}/summarized.csv"
 
     # Stage 9: imzML and ome.tif
     paths['imzml'] = expand(f"{base_deiso}/{{fl}}.imzML", fl=files)
     paths['ometif'] = expand(f"{base_deiso}/{{fl}}.ome.tif", fl=files)
 
-    # QC deviation after peak picking
-    if mass_list:
-        paths['deviation_peakpicking'] = expand(
-            f"{out_dir}/peakpicking_{snr}snr/quality_control/deviation_to_{{mass}}.npy",
-            mass=mass_list
-        )
+    # Stage 10: annotation
+    paths['annotation_csv'] = f"{base_summarized}/annotation.csv"
 
     # QC deviation after calibration
-    if mass_list:
-        paths['deviation_calibration'] = expand(
-            f"{base_cal}/quality_control/deviation_to_{{mass}}.npy", mass=mass_list
+    paths['qc_calibration'] = f"{base_cal}/quality_control"
+    paths['boxplots_calibration'] = expand(
+        f"{base_cal}/quality_control/boxplots/mass_{{mass}}_combined.svg", mass=mass_list
+    )
+
+    # QC heatmaps after peak picking
+    paths['max_intensity_heatmap'] = expand(
+            f"{base}/quality_control/{{fl}}_max_intensity.png", fl=files
         )
+    paths['no_peaks_heatmap'] = expand(
+        f"{base}/quality_control/{{fl}}_peaks.png",fl=files
+    )
+    paths['tic_heatmap'] = expand(
+        f"{base}/quality_control/{{fl}}_tic.png",fl=files
+    )
 
     # single-sample segmentation for matrix removal
     if not config['matrix_removal']['matrix_mzs']:
@@ -168,13 +207,15 @@ def get_pipeline_paths(out_dir, files, mass_list):
 
     return paths
 
-def get_input(out_dir, files, mass_list, input_list=[]):
+def get_input(out_dir, files, mass_list, sdf_file, input_list=[]):
     paths = get_pipeline_paths(out_dir, files, mass_list)
+    # QC heatmaps
+    input_list.append(paths['max_intensity_heatmap'])
+    input_list.append(paths['no_peaks_heatmap'])
+    input_list.append(paths['tic_heatmap'])
     # QC deviation
-    if mass_list:
-        input_list.append(paths['deviation_peakpicking'])
-        if config['general']['calibration']:
-            input_list.append(paths['deviation_calibration'])
+    if mass_list and config['general']['calibration']:
+        input_list.append(paths['boxplots_calibration'])
     # median spectrum for MFC inter-normalisation
     if config['general']['norm'] and len(files) > 1 and config['internorm']['method'] == 'mfc':
         input_list.append(paths['median_spectrum'])
@@ -183,6 +224,9 @@ def get_input(out_dir, files, mass_list, input_list=[]):
         input_list.append(paths['deiso_mz'])
     # summarized CSV
     input_list.append(paths['summarized_csv'])
+    # annotation
+    if sdf_file:
+        input_list.append(paths['annotation_csv'])
     # pre-processed imzML
     input_list.append(paths['imzml'])
     # ome.tif with ion images of peaks
@@ -198,49 +242,71 @@ else:
 
 
 rule all:
-    input: get_input(OUT_DIR, FILES, MASS_LIST)
+    input: get_input(OUT_DIR, FILES, MASS_LIST, SDF_FILE)
     #input: expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/{fl}.imzML', fl=FILES)
     #input: expand(OUT_DIR + '/peakpicking_' + str(config['peak_picking']['snr']) + 'snr/alignment_' + str(config['alignment']['pixel_percentage']) + 'pxperc/{fl}.imzML', fl=FILES)
 
 rule peak_picking:
     input: INPUT_DIR + '/{fl}.' + EXT
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.peak_picking.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.peak_picking.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_picking/peak_picking.py {input:q} -snr {config[peak_picking][snr]} \
             -window_size {config[peak_picking][window]} -order {config[peak_picking][order]} -smooth {config[peak_picking][smooth]} \
-            -out_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + ' -mass_list {config[general][mass_list]}'
+            -out_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + ' -mass_list ' + QC_MASS_LIST_STR
 
-rule deviation_to_mass:
-    input: imzML_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML', fl=FILES)
-    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_peakpicking']
-    shell: 'python ' + SCRIPT_PATH + '/qc/deviation_to_mass.py {config[general][mass_list]} ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] +
-            ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control -unit {config[alignment][unit]}'
+rule qc_heatmaps:
+    input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML'
+    output: max_intensity_heatmap=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control/{fl}_max_intensity.png',
+            no_peaks_heatmap=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control/{fl}_peaks.png',
+            tic_heatmap=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control/{fl}_tic.png'
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.qc_heatmaps.benchmark.txt",BM_REPEAT)
+    shell: 'python ' + SCRIPT_PATH + '/qc/msi_heatmaps.py {input} -result_dir ' +
+            get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control'
 
 rule calibration:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/{fl}.imzML'
-    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML'
+    output:
+        imzml=get_pipeline_paths(OUT_DIR,FILES,MASS_LIST)['calibration'] + '/{fl}.imzML',
+        deviation=expand(get_pipeline_paths(OUT_DIR,FILES,MASS_LIST)['qc_calibration'] + '/{fl}_{mass}_deviation_after_calib.npy', fl="{fl}", mass=MASS_LIST)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.calibration.benchmark.txt",BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/alignment/alignment.py {input} -calibrate 1 -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] +
-           ' -mass_list {config[general][mass_list]} -max_shift {config[alignment][max_shift]} -unit {config[alignment][unit]}'
+           ' -mass_list {config[general][mass_list]} -max_shift {config[calibration][max_shift]} -unit {config[calibration][unit]} -min_locks {config[calibration][min_locks]} -method {config[calibration][mode]} '
+           '-min_intensity {config[calibration][min_intensity]} -window_size {config[calibration][window_size]}'
 
 rule deviation_to_mass_comparison:
-    input: calibrated_imzml=expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML', fl=FILES),
-            deviation_peakpicking=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_peakpicking']
-    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deviation_calibration']
-    shell: 'python ' + SCRIPT_PATH + '/qc/deviation_to_mass.py {config[general][mass_list]} ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] +
-            ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/quality_control -unit {config[alignment][unit]} -comp_dir ' +
-            get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['base'] + '/quality_control'
+    input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['qc_calibration'] + '/{fl}_{mass}_deviation_after_calib.npy',fl=FILES,mass=MASS_LIST)
+    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['boxplots_calibration']
+    #benchmark: repeat(BENCHMARK_PATH + "/deviation_to_mass_comparison.benchmark.txt",BM_REPEAT)
+    shell: 'python ' + SCRIPT_PATH + '/qc/boxplot_deviation_to_mass.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/quality_control -unit {config[alignment][unit]}'
 
-rule get_reference_spectrum:
+rule get_reference_spectrum_all:
    input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML', fl=FILES)
    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/cmz.npy'
-   # benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
-   shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + ' -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} -num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]} -unit {config[alignment][unit]}'
+   #benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
+   shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + ' -result_dir '
+            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment']
+            + ' -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} '
+              '-num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]} '
+              '-unit {config[alignment][unit]} -mode {config[alignment][mode]}'
+
+rule get_reference_spectrum_chunked:
+   input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML', fl=FILES)
+   output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/cmz.npy'
+   #benchmark: repeat(BENCHMARK_PATH + "/get_reference_spectrum.benchmark.txt", BM_REPEAT)
+   threads: CHUNKED_WORKERS
+   resources: mem_mb=CHUNKED["memory_gb"] * 1024
+   shell: 'python ' + SCRIPT_PATH + '/alignment/get_reference_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + ' -result_dir '
+            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment']
+            + ' -mz_res {config[alignment][mz_resolution]} -px_perc {config[alignment][pixel_percentage]} '
+              '-num_px_perc {config[alignment][num_pixel_percentage]} -mass_list {config[general][mass_list]} '
+              '-unit {config[alignment][unit]} -mode {config[alignment][mode]} -pixel_chunk_size {config[alignment][chunked][pixel_chunk_size]} '
+              '-mz_min_da {config[alignment][chunked][mz_min]} -mz_max_da {config[alignment][chunked][mz_max]} -n_jobs {threads}'
 
 rule alignment:
     input: file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['calibration'] + '/{fl}.imzML',
            reference = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/cmz.npy'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.alignment.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.alignment.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/alignment/alignment.py {input.file} -refmz {input.reference} -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + ' -mass_list {config[general][mass_list]} -max_shift {config[alignment][max_shift]} -unit {config[alignment][unit]}'
 
 rule single_sample_segmentation:
@@ -248,7 +314,7 @@ rule single_sample_segmentation:
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_single_sample'] + '/binary_imgs/{fl}_matrix_cluster.tif'
     resources:
         mem_mb=lambda wildcards: file_size_resources(wildcards,input_file=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment']+"/{}.ibd".format(wildcards.fl))["mem_mb"]
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.single_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/single_sample_segmentation.py {input:q} \
             -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_single_sample'] + ' -method {config[matrix_removal][dim_reduction]} -n_components {config[matrix_removal][n_components]}'
             ' -metric {config[matrix_removal][umap_params][metric]} -n_neighbors {config[matrix_removal][umap_params][n_neighbors]}'
@@ -267,7 +333,7 @@ rule get_matrix_pixels:
     input: imzML_file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/{fl}.imzML',
             matrix_img = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_single_sample'] + '/binary_imgs/{fl}_matrix_cluster.tif'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}_extended_matrix_image.tif'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.get_matrix_pixels.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.get_matrix_pixels.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/matrix_removal/get_matrix_pixels_from_segmentation.py {input.imzML_file} '
             + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_single_sample'] + '/binary_imgs/ -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal']
             + ' -matrix_corr_thr {config[matrix_removal][matrix_corr_thr]} -pixel_perc_thr {config[matrix_removal][pixel_perc_thr]}'
@@ -276,7 +342,7 @@ rule matrix_removal:
     input: imzML_file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['alignment'] + '/{fl}.imzML',
             extended_matrix_img = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}_extended_matrix_image.tif'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.matrix_removal.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.matrix_removal.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/matrix_removal/matrix_removal.py {input.imzML_file:q} {input.extended_matrix_img:q} '
             '-proc_matrix_img {config[matrix_removal][matrix_postproc]} -pixel_removal {config[matrix_removal][pixel_removal]}'
             ' -matrix_subtraction {config[matrix_removal][matrix_subtraction]}'
@@ -286,14 +352,14 @@ rule matrix_removal:
 rule calc_spatial_coherence:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}_sc.csv'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.calc_spatial_coherence.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.calc_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/spatial_coherence.py {input:q} -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal']
 
 rule sum_spatial_coherence:
     input: sc_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}_sc.csv', fl=FILES),
            imzML_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML', fl=FILES)
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/peaks_above_' + str(config['peak_filtering']['thr']) + 'sc.npy'
-    # benchmark: repeat(BENCHMARK_PATH + "/sum_spatial_coherence.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/sum_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/get_mzs_above_spatial_coherence_thr.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' '
             + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + ' -thr ' + str(config['peak_filtering']['thr']) + ' -sum ' + str(config['peak_filtering']['sum'])
 
@@ -301,33 +367,33 @@ rule filter_spatial_coherence:
     input: imzML_file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/{fl}.imzML',
            sc_thr_file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['matrix_removal'] + '/peaks_above_' + str(config['peak_filtering']['thr']) + 'sc.npy'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['peak_filtering'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.filter_spatial_coherence.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.filter_spatial_coherence.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/peak_filtering/filter_spatial_coherence.py {input.imzML_file} {config[peak_filtering][thr]} {input.sc_thr_file} -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['peak_filtering']
 
 rule intranorm:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['peak_filtering'] + '/{fl}.imzML'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.intranorm.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.intranorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/intranorm/intranorm.py {input:q} -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + ' -method {config[intranorm][method]}'
 
 rule median_spectrum:
     input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + '/{fl}.imzML', fl=FILES)
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['median_spectrum']
-    # benchmark: repeat(BENCHMARK_PATH + "/median_spectrum.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/median_spectrum.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/get_median_overall_spectrum.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + ' {output:q}'
 
 rule internorm_mfc:
     input: file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + '/{fl}.imzML',
             reference = rules.median_spectrum.output
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/internorm.py {input.file:q} -result_dir ' \
            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + ' -method {config[internorm][method]} -reference {input.reference:q}'
 
 rule internorm:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['intranorm'] + '/{fl}.imzML'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.internorm.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/internorm/internorm.py {input.file:q} -result_dir ' \
            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + '\' -method {config[internorm][method]}'
 
@@ -336,7 +402,7 @@ rule multi_sample_segmentation:
     #output: seg_imgs = get_io_path_multi_sample_segmentation()[1]  + '/{fl}.png',
     #        umap_data = get_io_path_multi_sample_segmentation()[1] + '/umap_data.csv'
     output: umap_data = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_multi_sample'] + '/umap_data.csv'
-    # benchmark: repeat(BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/multi_sample_segmentation.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SEGMENTATION_SCRIPT_PATH + '/multi_sample_segmentation.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm']
             + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['segmentation_multi_sample']
             + ' -n_neighbors {config[outlier_detection][umap_params][n_neighbors]}'
@@ -347,7 +413,7 @@ rule outlier_detection:
     input: umap_data = rules.multi_sample_segmentation.output.umap_data,
             imzML_files = expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + '/{fl}.imzML', fl=FILES)
     output: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['outlier_removal'] + '/{fl}.imzML', fl=FILES)
-    # benchmark: repeat(BENCHMARK_PATH + "/outlier_detection.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/outlier_detection.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/outlier_detection/umap_outlier_detection.py {input.umap_data} '
             + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['internorm'] + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['outlier_removal']
             + ' -cluster_thr {config[outlier_detection][cluster_thr]} -sample_thr {config[outlier_detection][sample_thr]}'
@@ -356,83 +422,40 @@ rule outlier_detection:
 rule get_deisotoped_mz:
     input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['outlier_removal'] + '/{fl}.imzML', fl=FILES)
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deiso_mz']
-    # benchmark: repeat(BENCHMARK_PATH + "/get_deisotoped_mz.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/get_deisotoped_mz.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/deisotoping/get_deisotoped_mz.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['outlier_removal'] +
             ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] +
             ' -tolerance {config[deisotoping][tolerance]} -min_isotopes {config[deisotoping][min_isotopes]} \
-            -max_isotopes {config[deisotoping][max_isotopes]} -openMS {config[deisotoping][openMS]}'
+            -max_isotopes {config[deisotoping][max_isotopes]} -openMS {config[deisotoping][openMS]} -unit {config[deisotoping][unit]} \
+            -corr_thr {config[deisotoping][corr_thr]} -intensity_thr {config[deisotoping][intensity_thr]}'
 
 rule deisotoping:
     input: reference = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deiso_mz'],
             file = get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['outlier_removal'] + '/{fl}.imzML'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] + '/{fl}.imzML'
-    # benchmark: repeat(BENCHMARK_PATH + "/{fl}.deisotoping.benchmark.txt", BM_REPEAT)
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.deisotoping.benchmark.txt", BM_REPEAT)
     shell: 'python ' + SCRIPT_PATH + '/deisotoping/deisotope.py {input.file:q} {input.reference:q} \
             -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped']
 
 rule summarize:
     input: expand(get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] + '/{fl}.imzML', fl=FILES)
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['summarized_csv']
+    #benchmark: repeat(BENCHMARK_PATH + "/summarize.benchmark.txt",BM_REPEAT)
     shell: 'python ' + ANALYSIS_SCRIPT_PATH + '/get_summarized_spectra.py ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped']
             + ' -result_dir ' + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] + '/summarized -qc True'
+
+rule annotation:
+    input: summarized=get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['summarized_csv'], sdf=join(DATA_PATH, 'structures.sdf')
+    output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['annotation_csv']
+    #benchmark: repeat(BENCHMARK_PATH + "/annotation.benchmark.txt",BM_REPEAT)
+    shell: 'python ' + SCRIPT_PATH + '/annotation/mass_matching.py {input.sdf} {input.summarized} '
+            + get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['summarized']
+            + ' -unit {config[annotation][unit]} -tol {config[annotation][tolerance]} -even_chains_only {config[annotation][even_chains_only]} '
+              '-lipid_classes {config[annotation][lipid_classes]} -adducts {config[annotation][adducts]}'
 
 rule ion_image_stack:
     input: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] + '/{fl}.imzML'
     output: get_pipeline_paths(OUT_DIR, FILES, MASS_LIST)['deisotoped'] + '/{fl}.ome.tif'
+    #benchmark: repeat(BENCHMARK_PATH + "/{fl}.ion_image_stack.benchmark.txt",BM_REPEAT)
     shell: 'python ' + VIS_SCRIPT_PATH + '/generate_mz_tif_stack.py {input} {output}'
 
-# rule get_matrix_pixels_list:
-#     input: get_path_for_matrixsub(OUT_DIR) + '/{fl}.imzML'
-#     output: coords = get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction/{fl}_matrix_pixels.csv',
-#             img = get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction/{fl}_matrix_cluster.tif'
-#     shell: 'python ' + SCRIPT_PATH + '/get_matrix_pixels_from_mz_list.py {input:q} \
-#             {config[matrixsub][mz]} -result_dir \'' + get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction\''
-#
-# rule matrix_subtraction:
-#     input: imzml = get_path_for_matrixsub(OUT_DIR) + '/{fl}.imzML',
-#            matrix_pixel = get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction/{fl}_matrix_pixels.csv'
-#     output: get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction/{fl}.imzML'
-#     shell: 'python ' + SCRIPT_PATH + '/matrix_removal.py {input.imzml:q} {input.matrix_pixel:q} \
-#             -result_dir \'' + get_path_for_matrixsub(OUT_DIR) + '/matrix_subtraction\' \
-#             -pixel_removal {config[matrixsub][pixel_removal]} -matrix_subtraction {config[matrixsub][matrix_subtraction]}'
-#
-# rule get_region_imzML:
-#     input: get_path_for_region(OUT_DIR) + '/{fl}.imzML'
-#     output: get_path_for_region(OUT_DIR) + '/' + config['region']['name'] + '/{fl}.imzML'
-#     shell: 'python ' + SCRIPT_PATH + '/get_region_imzML_from_mask.py {input:1} \'{config[region][bin_dir]}/{wildcards.fl}.tif\' \
-#              -result_dir \'' + get_path_for_region(OUT_DIR) + '/' + config['region']['name'] + '\''
-#
-#
-#
-# rule transformation:
-#     input: get_path_for_transform(OUT_DIR, FILES) + '/{fl}.imzML'
-#     output: get_path_for_transform(OUT_DIR, FILES) + '/transformation/{fl}.imzML'
-#     shell: 'python ' + SCRIPT_PATH + '/transformation.py {input:q} -result_dir \'' + \
-#            get_path_for_transform(OUT_DIR,FILES) + '/transformation\''
-#
-# rule get_spatial_coherence:
-#     input: get_path_for_spatial_coherence(OUT_DIR, FILES) + '/{fl}.imzML'
-#     output: get_path_for_spatial_coherence(OUT_DIR, FILES) + '/spatial_coherence/{fl}_sc.csv'
-#     shell: 'python ' + SCRIPT_PATH + '/spatial_coherence.py {input:q} ' + \
-#             get_path_for_spatial_coherence(OUT_DIR, FILES) + '/spatial_coherence'
-#
-# rule get_mzs_above_spatial_coherence_thr:
-#     input: get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[1]
-#     output: get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[0] + '/peaks_above_sc.npy'
-#     shell: 'python ' + SCRIPT_PATH + '/get_mzs_above_spatial_coherence_thr.py \'' + \
-#             get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[0] + '\' \'' + \
-#            get_path_for_spatial_coherence(OUT_DIR,FILES) + '\' \'' +
-#            get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[0] + '\' -thr {config[spatial_coherence][thr]}'
-#
-# rule filter_spatial_coherence:
-#     input: imzML=get_path_for_spatial_coherence(OUT_DIR, FILES) + '/{fl}.imzML',
-#             refmz=get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[0] + '/peaks_above_sc.npy'
-#     output: get_path_for_spatial_coherence(OUT_DIR, FILES) + '/spatial_coherence/{fl}.imzML'
-#     shell: 'python ' + SCRIPT_PATH + '/filter_spatial_coherence.py {input.imzML:q} {input.refmz:q} \'' + \
-#             get_input_for_filter_spatial_coherence(OUT_DIR, FILES)[0] + '\''
-#
-# rule get_summarized_spectra:
-#     input: get_input_for_summarized(OUT_DIR, FILES)[1]
-#     output: get_input_for_summarized(OUT_DIR, FILES)[0] + '/summarized/summarized.csv'
-#     shell: 'python ' + SCRIPT_PATH + '/get_summarized_spectra.py \'' + get_input_for_summarized(OUT_DIR, FILES)[0] + '\' \
-#             -result_dir \'' + get_input_for_summarized(OUT_DIR, FILES)[0] + '/summarized

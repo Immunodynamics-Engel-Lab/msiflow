@@ -66,7 +66,12 @@ FILE_NAMES = [f.split('.')[0] for f in IMZML_FILES]
 CLASSES, GROUPS, SAMPLES = decode_files(BIN_IMG_FILES)
 
 if config['annotate']:
-    ANNOT_FL = join(DATA_PATH, 'annotation.tsv')
+    possible_files = ['annotation.csv', 'annotation.tsv']
+    for f in possible_files:
+        candidate = os.path.join(DATA_PATH,f)
+        if os.path.exists(candidate):
+            ANNOT_FL = candidate
+            break
     ANNOT = 'annot_'
 else:
     ANNOT_FL = []

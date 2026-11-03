@@ -49,9 +49,6 @@ if __name__ == '__main__':
 
     # ignore mz features and spectra with all zeros or nans
     df = df.replace(0, np.nan)
-    df = df.dropna(how='all', axis='columns')
-    # df = df.dropna(how='all', axis=0)
-    # df = df.dropna(how='all', axis=1)
 
     # get scaling factors for spectr
     spec = df.to_numpy()

@@ -42,7 +42,7 @@ def plot_embedding(df, col, output_dir, method, pca=None, plot=False):
     else:
         plt.xlabel('UMAP 1')
         plt.ylabel('UMAP 2')
-    plt.savefig(os.path.join(output_dir, '2D_{}_colored_by_{}.pdf'.format(method, col)))
+    plt.savefig(os.path.join(output_dir, '2D_{}_colored_by_{}.svg'.format(method, col)))
     if plot:
         plt.show()
     plt.close()
@@ -120,7 +120,8 @@ def get_summarized_spectra(result_dir, imzML_dir='', sum_file='', method='mean',
 
         # sns.boxplot(data=df_sum_all.applymap(math.log10), flierprops=flierprops)
         if method !='median' and save_plots:
-            ax = sns.boxplot(data=df_sum_all.applymap(math.log10), showfliers=False)
+            #ax = sns.boxplot(data=df_sum_all.applymap(math.log10), showfliers=False)
+            ax = sns.boxplot(data=np.log10(df_sum_all + 1), showfliers=False)
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             plt.xlabel("samples", size=12)
             plt.ylabel("log(intensities)", size=12)
@@ -155,7 +156,7 @@ def get_summarized_spectra(result_dir, imzML_dir='', sum_file='', method='mean',
             plt.plot(variance)
             plt.xlabel('Number of components')
             plt.ylabel('Explained variance (%)')
-            plt.savefig(os.path.join(qc_dir, 'Explained_variance_pca.pdf'))
+            plt.savefig(os.path.join(qc_dir, 'Explained_variance_pca.svg'))
             if plot:
                 plt.show()
             plt.close()

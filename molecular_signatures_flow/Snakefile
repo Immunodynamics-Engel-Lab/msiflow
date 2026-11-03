@@ -1,3 +1,4 @@
+import os
 from os.path import join
 import sys
 
@@ -79,7 +80,18 @@ MULTI_CLASS = config['classification']['multiclass']
 
 ANNOT_FL = ""
 if config['classification']['annotate']:
-    ANNOT_FL = join(DATA_PATH, 'annotation.tsv')
+    #ANNOT_FL = join(DATA_PATH, 'annotation.tsv')
+    possible_files = ['annotation.csv', 'annotation.tsv']
+
+    for f in possible_files:
+        candidate = os.path.join(DATA_PATH,f)
+        if os.path.exists(candidate):
+            ANNOT_FL = candidate
+            break
+
+    if ANNOT_FL != "":
+        print("No annotation file found (neither CSV nor TSV).")
+
 IMZML_DIR = join(DATA_PATH, 'msi')
 BIN_IMG_DIR = join(DATA_PATH, 'bin_imgs')
 

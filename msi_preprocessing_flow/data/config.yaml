@@ -1,19 +1,28 @@
 data: "data"
 
 general:
-  calibration: False
-  matrix_removal: True
+  calibration: True
+  matrix_removal: False
   peak_filtering: True
   norm: True
   outlier_removal: False
   deisotoping: True
-  mass_list: '369.351578,577.519037,760.585082,768.553782'
+  mass_list: '369.351578,577.519037,760.585082'
+  qc_mass_list: '551.503387,703.574852,734.569432,786.600732'
 
 peak_picking:
-  snr: 3
+  snr: 2
   smooth: 1
   window: 11
   order: 3
+
+calibration:
+  min_locks: 3
+  min_intensity: 50
+  window_size: 30
+  mode: 'linear'
+  unit: 'ppm'
+  max_shift: 20
 
 alignment:
   num_pixel_percentage: 100
@@ -21,6 +30,15 @@ alignment:
   unit: 'ppm'
   pixel_percentage: 3
   max_shift: 5
+  mode: 'chunked'
+  chunked:
+    cores: 32
+    memory_gb: 281
+    memory_per_worker_gb: 3
+    memory_overhead_gb: 8
+    pixel_chunk_size: 50000
+    mz_min: 300
+    mz_max: 1500
 
 matrix_removal:
   clustering: True
@@ -43,7 +61,7 @@ matrix_removal:
   matrix_corr_thr: 0.7
   pixel_perc_thr: 50
   matrix_postproc: False
-  matrix_mzs: ''
+  matrix_mzs: '855.07,861.08,877.05,1066.1,1082.07'
   thr_method: 'yen'
 
 peak_filtering:
@@ -65,8 +83,19 @@ outlier_detection:
   cluster_thr: 70
   sample_thr: 70
   remove_ssc: True
+
 deisotoping:
-  tolerance: 0.01
+  tolerance: 5
+  unit: 'ppm'
   min_isotopes: 2
   max_isotopes: 6
-  openMS: True
+  corr_thr: 0.5
+  intensity_thr: 0.25
+  openMS: False
+
+annotation:
+  unit: 'ppm'
+  tolerance: 5
+  even_chains_only: True
+  lipid_classes: 'FA,Cer,SM,HexCer,Hex2Cer,TG,DG,ST,PC,PA,PS,PE,PG'
+  adducts: 'H,Na,K'
