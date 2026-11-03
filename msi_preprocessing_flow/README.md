@@ -40,6 +40,7 @@ name your files in your data folder for successful completion of msiFlow.
 Your data folder must contain the following directories and files:
 - directory named *msi* containing imzML files or .d directories named *group_sampleno.imzML/.d*
 - *config.yaml* when using the **Docker** version of msiFlow with the **command-line interface** 
+- *structures.sdf* for lipid annotation in msiFlow v2.0.0
 
 #### Configuration file
 When using the **command-line interface** you must provide a **configuration file** named *config.yaml* to run this workflow. All parameters used by the workflow are defined in

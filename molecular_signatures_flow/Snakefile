@@ -89,7 +89,7 @@ if config['classification']['annotate']:
             ANNOT_FL = candidate
             break
 
-    if ANNOT_FL != "":
+    if ANNOT_FL == "":
         print("No annotation file found (neither CSV nor TSV).")
 
 IMZML_DIR = join(DATA_PATH, 'msi')

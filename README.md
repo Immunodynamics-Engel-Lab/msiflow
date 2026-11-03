@@ -25,6 +25,47 @@ automated workflows for reproducible and scalable multimodal mass spectrometry i
 [![GitHub Repo stars](https://img.shields.io/github/stars/Immunodynamics-Engel-Lab/msiflow)](https://github.com/Immunodynamics-Engel-Lab/msiflow) 
 &nbsp;
 
+## 🆕 What's new in msiFlow v2.0.0
+
+**msiFlow v2.0.0 introduces an updated MSI pre-processing workflow to improve the accuracy, transparency, and scalability of MSI data processing and downstream analysis.**
+
+### Main updates
+
+- **Mass Recalibration**
+- **Lipid Annotation**
+- **Batch Correction**
+- **Quality Control Visualisations**
+- **Computational Efficiency** 
+
+### Docker images
+
+The v2.0.0 Docker images are available on Docker Hub:
+
+- **CLI:** `docker pull phispa1812/msiflow_cli:v2.0.0`
+- **GUI:** `docker pull phispa1812/msiflow_gui:v2.0.0`
+
+The `latest` tag points to the most recent stable release.
+
+For reproducibility, we recommend specifying the version tag when running msiFlow.
+
+### Datasets
+
+The datasets listed below were used to evaluate msiFlow v2.0.0 in comparison with msiFlow v1.0.0:
+
+- MALDI-2 MSI data from head and neck cancer tissue samples are available [here](https://datastore.uni-muenster.de/records/b2892-0g370) 
+- MALDI-2 MSI single-cell data from blood-derived neutrophils obtained from healthy individuals and patients with liver cirrhosis are available on [Zenodo]()
+- MALDI-2 MSI data from mouse bladder tissue sections from four experimental conditions: uninfected control, uropathogenic E. coli (UPEC)-infection are available on [Zenodo](https://doi.org/10.5281/zenodo.11913042), 
+and the corresponding groups treated with transforming growth factor beta 1 (TGF-β1) inhibitor are available [here](https://datastore.uni-muenster.de/records/t3vmd-s6708) 
+- t-MALDI-2 MSI data from mouse bladder tissue sections (UPEC and TGF-β1) are available [here](https://datastore.uni-muenster.de/records/40rcy-va712)
+
+Please refer to the individual workflow READMEs for the corresponding dataset requirements and input file structure.
+
+### Configuration files
+
+The configuration files provided [here](./msi_preprocessing_flow/data/) correspond to the datasets used for evaluating msiFlow v2.0.0 against msiFlow v1.0.0. 
+They provide the settings for both versions needed to reproduce the results presented in our manuscript (coming soon).
+
+## About msiFlow
 msiFlow contains 7 snakemake workflows:
 
 | task | description | workflow
